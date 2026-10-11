@@ -13,7 +13,8 @@ import {
   query,
   where,
   arrayUnion,
-  arrayRemove
+  arrayRemove,
+  deleteField
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth,
@@ -100,6 +101,8 @@ onAuthStateChanged(auth, (user) => {
     criarFiltros();
     carregarAgendamentos();
     carregarDespesas();
+    verificarAniversariantesHoje();
+    setTimeout(verificarFinalizacoes, 4000);
     // Espera o layout renderizar para calcular a posição do cabeçalho fixo
     requestAnimationFrame(ajustarHeaderFixo);
     setTimeout(ajustarHeaderFixo, 300); // recalcula após fontes/ícones carregarem
@@ -659,6 +662,720 @@ if (btnSinais) {
   window.addEventListener("click", (e) => { if (e.target === modalSinais) modalSinais.style.display = "none"; });
 }
 
+// --- Aniversários --- //
+const NOMES_MESES = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+
+// Aceita "15/03", "15/3", "15-03", "15/03/1990"... Retorna { dia, mes } ou null
+function parseAniversario(txt) {
+  const m = String(txt ?? "").match(/(\d{1,2})\s*[\/\-.]\s*(\d{1,2})/);
+  if (!m) return null;
+  const dia = parseInt(m[1], 10), mes = parseInt(m[2], 10);
+  if (mes < 1 || mes > 12 || dia < 1 || dia > 31) return null;
+  return { dia, mes };
+}
+
+function hojeISO() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}-${String(d.getDate()).padStart(2, "0")}`;
+}
+
+function msgAniversario(nome) {
+  return (
+`Olá ${nome || "Maravilhosa"}! 🎂✨
+
+Passando para te desejar um feliz aniversário! 🎉💖
+Que o seu mês seja cheio de beleza, alegria e muitas realizações.
+
+Um carinho especial da Ana Luiza Fernandes Makeup! 🥰💄`
+  );
+}
+
+async function buscarTodosAgendamentos() {
+  const snap = await getDocs(collection(db, "agendamentos"));
+  const lista = [];
+  snap.forEach((d) => lista.push({ ...d.data(), id: d.id }));
+  return lista;
+}
+
+const modalAniversarios = document.getElementById("modalAniversarios");
+const listaAniversarios = document.getElementById("listaAniversarios");
+const selectMesAniversario = document.getElementById("selectMesAniversario");
+let cacheAniversarios = [];
+
+function renderAniversariantes(mes) {
+  const hoje = new Date();
+  const hojeDia = hoje.getDate(), hojeMes = hoje.getMonth() + 1;
+
+  // Uma entrada por cliente (telefone ou nome), guardando o atendimento mais recente
+  const clientes = new Map();
+  cacheAniversarios.forEach((ag) => {
+    const niver = parseAniversario(ag.aniversario);
+    if (!niver || niver.mes !== mes) return;
+    const chave = (ag.telefone || "").replace(/\D/g, "") || (ag.nome || "").trim().toLowerCase();
+    if (!chave) return;
+    const atual = clientes.get(chave);
+    if (!atual || (ag.data || "") > (atual.ultimaData || "")) {
+      clientes.set(chave, {
+        nome: ag.nome, telefone: ag.telefone, instagram: ag.instagram,
+        dia: niver.dia, ultimaData: ag.data
+      });
+    }
+  });
+
+  const lista = [...clientes.values()].sort((a, b) => a.dia - b.dia);
+  listaAniversarios.innerHTML = "";
+
+  if (!lista.length) {
+    listaAniversarios.innerHTML = `<p class="sinal-vazio">Nenhuma aniversariante em ${NOMES_MESES[mes - 1]}.</p>`;
+    return;
+  }
+
+  lista.forEach((c) => {
+    const ehHoje = mes === hojeMes && c.dia === hojeDia;
+    const dataTxt = `${String(c.dia).padStart(2, "0")}/${String(mes).padStart(2, "0")}`;
+    const card = document.createElement("div");
+    card.className = "sinal-card" + (ehHoje ? " aniv-hoje" : "");
+    card.innerHTML = `
+      <div class="sinal-topo">
+        <span class="sinal-nome">${esc(c.nome) || "-"}</span>
+        <span class="sinal-status aniv">🎂 ${dataTxt}${ehHoje ? " · É hoje! 🎉" : ""}</span>
+      </div>
+      <div class="sinal-info">
+        📞 ${esc(c.telefone) || "-"}
+        ${c.instagram && c.instagram !== "Não informado" ? `<br>📸 ${esc(c.instagram)}` : ""}
+        <br>📅 Último atendimento registrado: ${c.ultimaData ? c.ultimaData.split("-").reverse().join("/") : "-"}
+      </div>
+      <div class="sinal-acoes"></div>
+    `;
+    const btn = document.createElement("button");
+    btn.className = "btnPrimario";
+    btn.textContent = "💬 Parabenizar no WhatsApp";
+    btn.onclick = () => {
+      if (!(c.telefone || "").replace(/\D/g, "")) return alert("Telefone não informado!");
+      abrirWhatsApp(c.telefone, msgAniversario(c.nome));
+    };
+    card.querySelector(".sinal-acoes").appendChild(btn);
+    listaAniversarios.appendChild(card);
+  });
+}
+
+async function abrirModalAniversarios() {
+  if (!selectMesAniversario.options.length) {
+    NOMES_MESES.forEach((nome, i) => {
+      const opt = document.createElement("option");
+      opt.value = i + 1;
+      opt.textContent = nome;
+      selectMesAniversario.appendChild(opt);
+    });
+  }
+  selectMesAniversario.value = new Date().getMonth() + 1;
+  listaAniversarios.innerHTML = `<p class="sinal-vazio">Carregando...</p>`;
+  modalAniversarios.style.display = "flex";
+  try {
+    cacheAniversarios = await buscarTodosAgendamentos();
+  } catch (e) {
+    listaAniversarios.innerHTML = `<p class="sinal-vazio">Erro ao carregar: ${esc(e?.message || e)}</p>`;
+    return;
+  }
+  renderAniversariantes(parseInt(selectMesAniversario.value, 10));
+}
+
+const btnAniversarios = document.getElementById("btnAniversarios");
+if (btnAniversarios) {
+  btnAniversarios.addEventListener("click", abrirModalAniversarios);
+  selectMesAniversario.addEventListener("change", () => renderAniversariantes(parseInt(selectMesAniversario.value, 10)));
+  document.getElementById("fecharAniversarios").addEventListener("click", () => modalAniversarios.style.display = "none");
+  window.addEventListener("click", (e) => { if (e.target === modalAniversarios) modalAniversarios.style.display = "none"; });
+}
+
+// Pop-up no dia do atendimento: clientes atendidas hoje que fazem aniversário neste mês
+const modalAniversarioHoje = document.getElementById("modalAniversarioHoje");
+const listaAniversarioHoje = document.getElementById("listaAniversarioHoje");
+
+async function verificarAniversariantesHoje() {
+  if (!modalAniversarioHoje) return;
+  if (sessionStorage.getItem("avisoAniversarioHoje") === hojeISO()) return; // 1x por sessão/dia
+
+  let todos;
+  try {
+    todos = await buscarTodosAgendamentos();
+  } catch (e) {
+    console.error("Erro ao verificar aniversariantes de hoje:", e);
+    return;
+  }
+
+  const hoje = new Date();
+  const hojeDia = hoje.getDate(), hojeMes = hoje.getMonth() + 1;
+  const atendimentosHoje = todos
+    .filter((ag) => ag.data === hojeISO())
+    .map((ag) => ({ ag, niver: parseAniversario(ag.aniversario) }))
+    .filter((x) => x.niver && x.niver.mes === hojeMes)
+    .sort((a, b) => (a.ag.horario || "").localeCompare(b.ag.horario || ""));
+
+  if (!atendimentosHoje.length) return;
+  sessionStorage.setItem("avisoAniversarioHoje", hojeISO());
+
+  listaAniversarioHoje.innerHTML = "";
+  atendimentosHoje.forEach(({ ag, niver }) => {
+    const ehHoje = niver.dia === hojeDia;
+    const dataTxt = `${String(niver.dia).padStart(2, "0")}/${String(niver.mes).padStart(2, "0")}`;
+    const situacao = ehHoje ? "É hoje! 🎉" : niver.dia > hojeDia ? "Ainda este mês" : "Já passou neste mês";
+    const card = document.createElement("div");
+    card.className = "sinal-card aniv-hoje";
+    card.innerHTML = `
+      <div class="sinal-topo">
+        <span class="sinal-nome">${esc(ag.nome) || "-"}</span>
+        <span class="sinal-status aniv">🎂 ${dataTxt} · ${situacao}</span>
+      </div>
+      <div class="sinal-info">
+        ⏰ Atendimento às ${esc(ag.horario) || "-"} · 💄 ${esc(ag.procedimento) || "-"}
+      </div>
+      <div class="sinal-acoes"></div>
+    `;
+    const btn = document.createElement("button");
+    btn.className = "btnPrimario";
+    btn.textContent = "💬 Parabenizar no WhatsApp";
+    btn.onclick = () => {
+      if (!(ag.telefone || "").replace(/\D/g, "")) return alert("Telefone não informado!");
+      abrirWhatsApp(ag.telefone, msgAniversario(ag.nome));
+    };
+    card.querySelector(".sinal-acoes").appendChild(btn);
+    listaAniversarioHoje.appendChild(card);
+  });
+  modalAniversarioHoje.style.display = "flex";
+}
+
+if (modalAniversarioHoje) {
+  const fecharHoje = () => { modalAniversarioHoje.style.display = "none"; };
+  document.getElementById("fecharAniversarioHoje").addEventListener("click", fecharHoje);
+  document.getElementById("entendiAniversarioHoje").addEventListener("click", fecharHoje);
+  window.addEventListener("click", (e) => { if (e.target === modalAniversarioHoje) fecharHoje(); });
+}
+
+// --- Meta mensal --- //
+const metaRef = doc(db, "configuracoes", "meta");
+const btnMeta = document.getElementById("btnMeta");
+const modalMeta = document.getElementById("modalMeta");
+const selectMesMeta = document.getElementById("selectMesMeta");
+let metaCfg = { padrao: 0, meses: {} };
+let metaCfgCarregada = false;
+let cacheMeta = [];
+let graficoLinha = null;
+let graficoBarras = null;
+
+function mesAtualYM() {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function nomeMesYM(ym) {
+  const [y, m] = ym.split("-").map(Number);
+  return `${NOMES_MESES[m - 1]} ${y}`;
+}
+
+function listarMesesYM() {
+  const lista = [];
+  const fim = new Date(new Date().getFullYear(), new Date().getMonth() + 12, 1);
+  for (let d = new Date(2025, 10, 1); d <= fim; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+    lista.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
+  }
+  return lista;
+}
+
+async function carregarMetaCfg(forcar) {
+  if (metaCfgCarregada && !forcar) return;
+  try {
+    const snap = await getDoc(metaRef);
+    const d = snap.exists() ? snap.data() : {};
+    metaCfg = { padrao: Number(d.padrao) || 0, meses: d.meses || {} };
+    metaCfgCarregada = true;
+  } catch (e) {
+    console.error("Erro ao carregar meta:", e);
+  }
+}
+
+function metaDoMes(ym) {
+  const v = Number(metaCfg.meses?.[ym]);
+  return v > 0 ? v : (Number(metaCfg.padrao) || 0);
+}
+
+function valorFinalAg(ag) {
+  return Math.max(Number(ag.valor || 0) - Number(ag.desconto || 0), 0);
+}
+
+// Reservas com prazo vencido e sem pagamento não contam para a meta
+function contaNaMeta(ag) {
+  if (ag.sinalValor && ag.sinalStatus === "aguardando" && tempoRestante(ag.sinalPrazo).expirado) return false;
+  return true;
+}
+
+function calcularMeta(ags, ym) {
+  const [y, m] = ym.split("-").map(Number);
+  const lastDay = new Date(y, m, 0).getDate();
+  const atual = mesAtualYM();
+  const status = ym === atual ? "atual" : (ym < atual ? "passado" : "futuro");
+  const hojeDia = status === "atual" ? new Date().getDate() : (status === "passado" ? lastDay : 0);
+
+  const realDia = new Array(lastDay).fill(0);
+  const projDia = new Array(lastDay).fill(0);
+  let realizado = 0, projetado = 0, qtdConcl = 0, qtdTotal = 0;
+
+  ags.forEach((ag) => {
+    if (!ag.data || ag.data.slice(0, 7) !== ym || !contaNaMeta(ag)) return;
+    const v = valorFinalAg(ag);
+    const dia = parseInt(ag.data.slice(8, 10), 10);
+    if (!(dia >= 1 && dia <= lastDay)) return;
+    projetado += v; qtdTotal++; projDia[dia - 1] += v;
+    if (ag.concluido === true) { realizado += v; qtdConcl++; realDia[dia - 1] += v; }
+  });
+
+  const meta = metaDoMes(ym);
+  const aRealizar = projetado - realizado;
+  const ticket = qtdTotal ? projetado / qtdTotal : 0;
+  const faltaProj = Math.max(meta - projetado, 0);
+  const diasRestantes = status === "atual" ? lastDay - hojeDia + 1 : (status === "futuro" ? lastDay : 0);
+
+  let acR = 0, acP = 0;
+  const acumReal = realDia.map((v, i) => { acR += v; return i + 1 <= hojeDia ? acR : null; });
+  const acumProj = projDia.map((v) => (acP += v));
+
+  return {
+    ym, status, lastDay, hojeDia, meta, realizado, aRealizar, projetado, qtdConcl, qtdTotal, ticket,
+    pct: meta ? (realizado / meta) * 100 : 0,
+    pctProj: meta ? (projetado / meta) * 100 : 0,
+    falta: Math.max(meta - realizado, 0),
+    faltaProj, diasRestantes,
+    porDia: diasRestantes > 0 ? Math.max(meta - realizado, 0) / diasRestantes : 0,
+    atendFaltam: ticket > 0 ? Math.ceil(faltaProj / ticket) : 0,
+    acumReal, acumProj
+  };
+}
+
+function mensagemMeta(c) {
+  const pick = (arr) => arr[new Date().getDate() % arr.length];
+  if (!c.meta) {
+    return pick([
+      "✨ Defina a sua meta do mês e acompanhe cada passo da sua evolução. Metas dão direção — e você já mostra o quanto o seu trabalho encanta!",
+      "🌱 Que tal escolher uma meta para este mês? Comece com um valor que te motive: o importante é ter um norte."
+    ]);
+  }
+  if (c.pct >= 100) {
+    return pick([
+      "🏆 META BATIDA! Parabéns, Ana! Todo esse resultado vem do seu talento, da sua dedicação e do carinho com cada cliente. Comemore, você merece! 🥳",
+      "🎉 Meta conquistada! Cada atendimento foi um passo até aqui. Aproveite o momento e sinta orgulho de você! 💖",
+      "👑 Você bateu a meta! O seu trabalho é a prova de que dedicação traz resultado. Que venha ainda mais! ✨"
+    ]);
+  }
+  if (c.status === "passado") {
+    return c.pctProj >= 100
+      ? "✅ Mês encerrado com a meta atingida. Parabéns pelo resultado, Ana! 💖"
+      : pick([
+        `🌷 Este mês fechou em ${c.pct.toFixed(0)}% da meta. Cada mês traz um aprendizado — olhe para o que funcionou e leve isso para o próximo. Você está construindo algo lindo!`,
+        `💛 Nem todo mês é igual, e tudo bem. Você fechou com ${brl(c.realizado)} e isso já é fruto do seu esforço. Respire fundo e vamos para o próximo!`
+      ]);
+  }
+  if (c.status === "futuro") {
+    return "🗓️ Esse mês ainda vai começar. Os agendamentos já registrados aparecem aqui, e a sua meta pode ser ajustada quando quiser. Bora planejar com carinho! ✨";
+  }
+  if (c.pctProj >= 100) {
+    return pick([
+      "📅 Os seus agendamentos já cobrem a meta! Agora é só realizar cada atendimento com o capricho de sempre. 💄",
+      "🌟 Meta garantida nos agendamentos! Falta concluir os atendimentos — você está no caminho certo."
+    ]);
+  }
+  const esperado = (c.hojeDia / c.lastDay) * 100;
+  if (c.pct >= 90) {
+    return pick([
+      `🔥 Você está a um passo! Faltam só ${brl(c.falta)} para a meta. Respire fundo e finalize com força!`,
+      `🚀 Quase lá, Ana! Falta pouquinho (${brl(c.falta)}). A reta final é sua!`
+    ]);
+  }
+  if (c.pct >= esperado) {
+    return pick([
+      `💪 Você está no ritmo ou à frente! Já são ${c.pct.toFixed(0)}% da meta com ${c.hojeDia} dias de mês. Continue assim!`,
+      "🌸 Seu mês está caminhando muito bem. Cada atendimento aproxima você da meta — siga com a mesma energia!"
+    ]);
+  }
+  return pick([
+    "🤍 O mês ainda não decolou, e está tudo bem. Ainda há dias pela frente, e cada cliente atendida com carinho faz diferença. Um passo de cada vez!",
+    "🌻 Dias mais calmos fazem parte do caminho. Aproveite para divulgar nas redes, falar com clientes antigas e cuidar de você. O seu trabalho é de muito valor!",
+    "✨ Confie no seu processo. A sua qualidade já conquistou muitas clientes, e novas virão. Vamos com calma e constância!"
+  ]);
+}
+
+function infoFormMeta(ym) {
+  const info = document.getElementById("metaInfoForm");
+  const temEspecifica = Number(metaCfg.meses?.[ym]) > 0;
+  info.textContent = `Meta padrão: ${metaCfg.padrao > 0 ? brl(metaCfg.padrao) : "não definida"}` +
+    (temEspecifica ? ` · ${nomeMesYM(ym)} usa meta específica de ${brl(metaCfg.meses[ym])}` : "");
+  document.getElementById("usarMetaPadrao").style.display = temEspecifica && metaCfg.padrao > 0 ? "inline-block" : "none";
+  document.getElementById("metaValor").value = metaDoMes(ym) || "";
+}
+
+function renderMeta(ym) {
+  const c = calcularMeta(cacheMeta, ym);
+  const cont = document.getElementById("metaConteudo");
+  infoFormMeta(ym);
+
+  const barReal = c.meta ? Math.min(c.pct, 100) : 0;
+  const barProj = c.meta ? Math.min(Math.max(c.pctProj - c.pct, 0), 100 - barReal) : 0;
+  const acima = c.meta && c.realizado > c.meta ? c.realizado - c.meta : 0;
+
+  const cards = [];
+  cards.push(["🎯 Meta bruta", c.meta ? brl(c.meta) : "—", ""]);
+  cards.push(["✅ Realizado (concluído)", brl(c.realizado), `${c.qtdConcl} atendimento(s)`]);
+  cards.push(["📅 A concluir (agendado)", brl(c.aRealizar), `${c.qtdTotal - c.qtdConcl} atendimento(s)`]);
+  cards.push(["📈 Projetado", brl(c.projetado), c.meta ? `${c.pctProj.toFixed(0)}% da meta` : ""]);
+  if (c.meta) {
+    cards.push([acima > 0 ? "🏅 Acima da meta" : "🧗 Falta para a meta", acima > 0 ? brl(acima) : brl(c.falta), "considerando só o concluído", "destaque"]);
+    if (c.status !== "passado" && c.projetado < c.meta) cards.push(["🔮 Falta além dos agendados", brl(c.faltaProj), ""]);
+  }
+  cards.push(["🎟️ Ticket médio", brl(c.ticket), ""]);
+  if (c.meta && c.status === "atual" && c.falta > 0) {
+    cards.push(["📆 Por dia restante", brl(c.porDia), `${c.diasRestantes} dia(s) incluindo hoje`]);
+    if (c.atendFaltam > 0) cards.push(["💄 Atendimentos que faltam", String(c.atendFaltam), "além dos já agendados"]);
+  }
+
+  cont.innerHTML = `
+    <div>
+      <div class="meta-pct">${c.meta ? c.pct.toFixed(0) + "%" : "—"}</div>
+      <div class="meta-barra" aria-label="Progresso da meta">
+        <div class="real" style="width:${barReal}%"></div>
+        <div class="proj" style="width:${barProj}%"></div>
+      </div>
+      <div class="meta-legenda">
+        <span><i style="background:var(--verde)"></i>Realizado</span>
+        <span><i style="background:var(--dourado)"></i>Agendado a concluir</span>
+        <span><i style="background:#eadfe0"></i>Falta</span>
+      </div>
+    </div>
+    <div class="meta-msg">${mensagemMeta(c)}</div>
+    <div class="meta-cards">
+      ${cards.map(([rot, val, sub, cls]) => `
+        <div class="meta-card ${cls || ""}"><small>${rot}</small><strong>${val}</strong>${sub ? `<small>${sub}</small>` : ""}</div>`).join("")}
+    </div>
+    <p class="meta-grafico-titulo">Evolução no mês</p>
+    <div class="meta-grafico"><canvas id="graficoMetaLinha"></canvas></div>
+    <p class="meta-grafico-titulo">Últimos 6 meses</p>
+    <div class="meta-grafico"><canvas id="graficoMetaBarras"></canvas></div>
+  `;
+  desenharGraficosMeta(c);
+}
+
+function desenharGraficosMeta(c) {
+  if (typeof Chart === "undefined") return;
+  if (graficoLinha) graficoLinha.destroy();
+  if (graficoBarras) graficoBarras.destroy();
+  const verde = "#556b2f", dourado = "#d4af37", cinza = "#9a8f91";
+  const fmt = (v) => "R$ " + Number(v).toLocaleString("pt-BR", { maximumFractionDigits: 0 });
+  const opcoes = {
+    responsive: true,
+    maintainAspectRatio: false,
+    interaction: { mode: "index", intersect: false },
+    plugins: { tooltip: { callbacks: { label: (ctx) => `${ctx.dataset.label}: ${fmt(ctx.parsed.y)}` } } },
+    scales: { y: { beginAtZero: true, ticks: { callback: (v) => fmt(v) } } }
+  };
+
+  const dias = Array.from({ length: c.lastDay }, (_, i) => i + 1);
+  const dsLinha = [
+    { label: "Realizado", data: c.acumReal, borderColor: verde, backgroundColor: verde, tension: .25, spanGaps: false, pointRadius: 2 },
+    { label: "Projetado (com agendados)", data: c.acumProj, borderColor: dourado, backgroundColor: dourado, borderDash: [6, 4], tension: .25, pointRadius: 0 }
+  ];
+  if (c.meta) {
+    dsLinha.push({ label: "Ritmo ideal", data: dias.map((d) => (c.meta * d) / c.lastDay), borderColor: cinza, borderDash: [2, 4], pointRadius: 0 });
+  }
+  graficoLinha = new Chart(document.getElementById("graficoMetaLinha"), {
+    type: "line", data: { labels: dias, datasets: dsLinha }, options: opcoes
+  });
+
+  // Últimos 6 meses terminando no mês selecionado
+  const [y, m] = c.ym.split("-").map(Number);
+  const rotulos = [], valores = [], metas = [];
+  for (let i = 5; i >= 0; i--) {
+    const d = new Date(y, m - 1 - i, 1);
+    const ym = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
+    rotulos.push(`${NOMES_MESES[d.getMonth()].slice(0, 3)}/${String(d.getFullYear()).slice(2)}`);
+    valores.push(cacheMeta.filter((ag) => ag.data?.slice(0, 7) === ym && contaNaMeta(ag)).reduce((s, ag) => s + valorFinalAg(ag), 0));
+    metas.push(metaDoMes(ym) || null);
+  }
+  graficoBarras = new Chart(document.getElementById("graficoMetaBarras"), {
+    data: {
+      labels: rotulos,
+      datasets: [
+        { type: "bar", label: "Bruto", data: valores, backgroundColor: verde, borderRadius: 6 },
+        { type: "line", label: "Meta", data: metas, borderColor: dourado, backgroundColor: dourado, borderWidth: 2, pointRadius: 4, spanGaps: true }
+      ]
+    },
+    options: opcoes
+  });
+}
+
+async function atualizarBotaoMeta(ags) {
+  if (!btnMeta) return;
+  await carregarMetaCfg();
+  const c = calcularMeta(ags, mesAtualYM());
+  btnMeta.textContent = c.meta ? `🎯 Meta (${c.pct.toFixed(0)}%)` : "🎯 Meta";
+}
+
+async function abrirModalMeta() {
+  modalMeta.style.display = "flex";
+  if (!selectMesMeta.options.length) {
+    listarMesesYM().forEach((ym) => {
+      const opt = document.createElement("option");
+      opt.value = ym;
+      opt.textContent = nomeMesYM(ym);
+      selectMesMeta.appendChild(opt);
+    });
+  }
+  selectMesMeta.value = mesAtualYM();
+  document.getElementById("metaConteudo").innerHTML = `<p class="sinal-vazio">Carregando...</p>`;
+  try {
+    await carregarMetaCfg(true);
+    cacheMeta = await buscarTodosAgendamentos();
+  } catch (e) {
+    document.getElementById("metaConteudo").innerHTML = `<p class="sinal-vazio">Erro ao carregar: ${esc(e?.message || e)}</p>`;
+    return;
+  }
+  renderMeta(selectMesMeta.value);
+}
+
+async function salvarMeta(tipo) {
+  const ym = selectMesMeta.value;
+  const v = parseFloat(document.getElementById("metaValor").value);
+  if (!(v > 0)) return alert("Informe um valor de meta maior que zero.");
+  try {
+    if (tipo === "mes") {
+      await setDoc(metaRef, { meses: { [ym]: v } }, { merge: true });
+      metaCfg.meses = { ...(metaCfg.meses || {}), [ym]: v };
+    } else {
+      await setDoc(metaRef, { padrao: v }, { merge: true });
+      metaCfg.padrao = v;
+    }
+  } catch (e) {
+    console.error("Erro ao salvar meta:", e);
+    return alert("⚠️ Erro ao salvar: " + (e?.message || e) + "\n\nVerifique as Regras de Segurança do Firestore para 'configuracoes/meta'.");
+  }
+  renderMeta(ym);
+  atualizarBotaoMeta(cacheMeta);
+}
+
+if (btnMeta) {
+  btnMeta.addEventListener("click", abrirModalMeta);
+  selectMesMeta.addEventListener("change", () => renderMeta(selectMesMeta.value));
+  document.getElementById("salvarMetaMes").addEventListener("click", () => salvarMeta("mes"));
+  document.getElementById("salvarMetaPadrao").addEventListener("click", () => salvarMeta("padrao"));
+  document.getElementById("usarMetaPadrao").addEventListener("click", async () => {
+    const ym = selectMesMeta.value;
+    try {
+      await setDoc(metaRef, { meses: { [ym]: deleteField() } }, { merge: true });
+      delete metaCfg.meses[ym];
+    } catch (e) {
+      return alert("⚠️ Erro: " + (e?.message || e));
+    }
+    renderMeta(ym);
+    atualizarBotaoMeta(cacheMeta);
+  });
+  document.getElementById("fecharMeta").addEventListener("click", () => modalMeta.style.display = "none");
+  window.addEventListener("click", (e) => { if (e.target === modalMeta) modalMeta.style.display = "none"; });
+}
+
+// --- Finalização do atendimento --- //
+// O pop-up aparece quando passam MINUTOS_APOS_HORARIO do horário marcado e o atendimento
+// ainda não foi concluído. Considera os últimos 7 dias, para não avisar sobre dados muito antigos.
+const MINUTOS_APOS_HORARIO = 60;
+const modalFinalizacao = document.getElementById("modalFinalizacao");
+const finalizacaoCorpo = document.getElementById("finalizacaoCorpo");
+const finalizacaoContador = document.getElementById("finalizacaoContador");
+let filaFinalizacao = [];
+let finalizacaoAberta = false;
+const adiadosFinalizacao = new Set();
+
+function msgAgradecimento(nome) {
+  return (
+`Olá ${nome || "Maravilhosa"}! 💖✨
+
+Muito obrigada por escolher a Ana Luiza Fernandes Makeup! Foi um prazer cuidar de você. 🥰
+
+Espero que tenha amado o resultado! Se puder, me conta o que achou, e se quiser, marque o nosso Instagram: @analuizafernandesmakeup ✨
+
+Já fico aguardando você para o próximo atendimento. Quando quiser agendar, é só me chamar ou usar o autoatendimento do site. 💄
+
+Um beijo!`
+  );
+}
+
+function msgAtrasoOuFalta(nome) {
+  return (
+`Olá ${nome || "Maravilhosa"}! 😊
+
+O tempo máximo de espera é de 20 minutos. Como o atraso ultrapassou esse período, não conseguirei mais realizar seu atendimento hoje. Podemos remarcar novamente em um dia que você esteja com tempo?`
+  );
+}
+
+function msgRemarcar(nome) {
+  return (
+`Olá ${nome || "Maravilhosa"}! 💕
+
+Não conseguimos realizar o seu atendimento no horário marcado. Vamos remarcar para um dia que fique bom para você? Me conta qual dia e período são melhores. 😊`
+  );
+}
+
+function fimDoAtendimento(ag) {
+  const [y, m, d] = (ag.data || "").split("-").map(Number);
+  const [h, mi] = (ag.horario || "").split(":").map(Number);
+  if (isNaN(h) || isNaN(mi)) return new Date(y, m - 1, d, 23, 59);
+  return new Date(y, m - 1, d, h, mi + MINUTOS_APOS_HORARIO);
+}
+
+function algumModalAberto() {
+  return [...document.querySelectorAll(".modal")].some((m) => m.style.display === "flex");
+}
+
+async function verificarFinalizacoes() {
+  if (!auth.currentUser || !modalFinalizacao || finalizacaoAberta || algumModalAberto()) return;
+
+  const desde = new Date();
+  desde.setDate(desde.getDate() - 7);
+  const desdeISO = `${desde.getFullYear()}-${String(desde.getMonth() + 1).padStart(2, "0")}-${String(desde.getDate()).padStart(2, "0")}`;
+
+  let docs;
+  try {
+    const snap = await getDocs(query(collection(db, "agendamentos"), where("data", ">=", desdeISO)));
+    docs = snap.docs.map((d) => ({ ...d.data(), id: d.id }));
+  } catch (e) {
+    console.error("Erro ao verificar finalizações:", e);
+    return;
+  }
+
+  const agora = new Date();
+  filaFinalizacao = docs
+    .filter((ag) => ag.concluido !== true && !ag.finalizacaoStatus && !adiadosFinalizacao.has(ag.id) && contaNaMeta(ag))
+    .map((ag) => ({ ag, fim: fimDoAtendimento(ag) }))
+    .filter((x) => x.fim <= agora)
+    .sort((a, b) => a.fim - b.fim)
+    .map((x) => x.ag);
+
+  if (!filaFinalizacao.length || algumModalAberto()) return;
+  finalizacaoAberta = true;
+  modalFinalizacao.style.display = "flex";
+  renderFinalizacao("pergunta");
+}
+
+function fecharFinalizacao(adiar) {
+  if (adiar) filaFinalizacao.forEach((ag) => adiadosFinalizacao.add(ag.id));
+  filaFinalizacao = [];
+  finalizacaoAberta = false;
+  modalFinalizacao.style.display = "none";
+  carregarAgendamentos();
+}
+
+function proximaFinalizacao() {
+  filaFinalizacao.shift();
+  if (!filaFinalizacao.length) return fecharFinalizacao(false);
+  renderFinalizacao("pergunta");
+}
+
+function botaoFin(texto, classe, onclick) {
+  const b = document.createElement("button");
+  b.className = classe;
+  b.textContent = texto;
+  b.onclick = onclick;
+  return b;
+}
+
+function renderFinalizacao(etapa) {
+  const ag = filaFinalizacao[0];
+  if (!ag) return fecharFinalizacao(false);
+
+  const dataBr = ag.data ? ag.data.split("-").reverse().join("/") : "-";
+  const total = valorFinalAg(ag);
+  const aReceber = ag.sinalValor && ag.sinalStatus === "pago" ? Math.max(total - Number(ag.sinalValor), 0) : total;
+  finalizacaoContador.textContent = filaFinalizacao.length > 1
+    ? `${filaFinalizacao.length} atendimentos aguardando finalização.`
+    : "1 atendimento aguardando finalização.";
+
+  finalizacaoCorpo.innerHTML = "";
+  const card = document.createElement("div");
+  card.className = "sinal-card";
+  card.innerHTML = `
+    <div class="sinal-topo">
+      <span class="sinal-nome">${esc(ag.nome) || "-"}</span>
+      <span class="sinal-status">📅 ${dataBr} às ${esc(ag.horario) || "-"}</span>
+    </div>
+    <div class="sinal-info">
+      📞 ${esc(ag.telefone) || "-"}<br>
+      💄 ${esc(ag.procedimento) || "-"}<br>
+      💰 Total: <strong>${brl(total)}</strong>
+      ${ag.sinalValor ? ` · Reserva: ${brl(ag.sinalValor)} (${ag.sinalStatus === "pago" ? "paga" : "NÃO confirmada"})` : ""}
+      · A receber: <strong>${brl(aReceber)}</strong>
+    </div>`;
+  finalizacaoCorpo.appendChild(card);
+
+  const pergunta = document.createElement("p");
+  pergunta.style.cssText = "margin:10px 0 6px;font-weight:600;color:var(--verde)";
+  const acoes = document.createElement("div");
+  acoes.className = "sinal-acoes";
+
+  if (etapa === "pergunta") {
+    pergunta.textContent = "O procedimento foi realizado?";
+    acoes.append(
+      botaoFin("✅ Sim, foi realizado", "btnPrimario", async () => {
+        try {
+          await updateDoc(doc(db, "agendamentos", ag.id), {
+            concluido: true, finalizacaoStatus: "realizado", concluidoEm: new Date().toISOString()
+          });
+        } catch (e) { return alert("⚠️ Erro ao finalizar: " + (e?.message || e)); }
+        renderFinalizacao("agradecimento");
+      }),
+      botaoFin("❌ Não foi realizado", "btnPerigo", async () => {
+        try {
+          await updateDoc(doc(db, "agendamentos", ag.id), { finalizacaoStatus: "nao_realizado" });
+        } catch (e) { return alert("⚠️ Erro ao registrar: " + (e?.message || e)); }
+        renderFinalizacao("nao_realizado");
+      }),
+      botaoFin("⏳ Decidir depois", "btnFechar", () => {
+        adiadosFinalizacao.add(ag.id);
+        proximaFinalizacao();
+      })
+    );
+  } else if (etapa === "agradecimento") {
+    pergunta.textContent = "🎉 Atendimento concluído! Parabéns, Ana! Deseja enviar uma mensagem de agradecimento para a cliente?";
+    acoes.append(
+      botaoFin("💬 Enviar agradecimento no WhatsApp", "btnPrimario", () => {
+        if (!(ag.telefone || "").replace(/\D/g, "")) { alert("Telefone não informado!"); return; }
+        abrirWhatsApp(ag.telefone, msgAgradecimento(ag.nome));
+        updateDoc(doc(db, "agendamentos", ag.id), { agradecimentoEnviadoEm: new Date().toISOString() }).catch(() => {});
+        proximaFinalizacao();
+      }),
+      botaoFin("Agora não", "btnFechar", proximaFinalizacao)
+    );
+  } else if (etapa === "nao_realizado") {
+    pergunta.textContent = "Registrado como não realizado. Deseja avisar a cliente?";
+    acoes.append(
+      botaoFin("⏰ Avisar atraso (20 min)", "btnSecundario", () => {
+        if (!(ag.telefone || "").replace(/\D/g, "")) { alert("Telefone não informado!"); return; }
+        abrirWhatsApp(ag.telefone, msgAtrasoOuFalta(ag.nome));
+        proximaFinalizacao();
+      }),
+      botaoFin("🔁 Propor remarcação", "btnSecundario", () => {
+        if (!(ag.telefone || "").replace(/\D/g, "")) { alert("Telefone não informado!"); return; }
+        abrirWhatsApp(ag.telefone, msgRemarcar(ag.nome));
+        proximaFinalizacao();
+      }),
+      botaoFin("Só registrar", "btnFechar", proximaFinalizacao)
+    );
+  }
+  finalizacaoCorpo.append(pergunta, acoes);
+}
+
+if (modalFinalizacao) {
+  document.getElementById("fecharFinalizacao").addEventListener("click", () => fecharFinalizacao(true));
+  window.addEventListener("click", (e) => { if (e.target === modalFinalizacao) fecharFinalizacao(true); });
+  // Reverifica a cada 5 minutos enquanto o painel estiver aberto e visível
+  setInterval(() => { if (!document.hidden) verificarFinalizacoes(); }, 300000);
+}
+
 // --- Carregar agendamentos --- //
 async function carregarAgendamentos() {
   const querySnapshot = await getDocs(collection(db, "agendamentos"));
@@ -701,6 +1418,7 @@ agendamentos.sort((a, b) => {
 });
 
   atualizarBotaoSinais(agendamentos.filter((a) => a.sinalStatus === "aguardando").length);
+  atualizarBotaoMeta(agendamentos);
 
   let total = 0;
   let pagamentos = {};
@@ -984,6 +1702,13 @@ document.getElementById("acaoAtraso").onclick = () => {
 
 O tempo máximo de espera é de 20 minutos. Como o atraso ultrapassou esse período, não conseguirei mais realizar seu atendimento hoje. Podemos remarcar novamente em um dia que você esteja com tempo?`;
   abrirWhatsApp(agendamentoSelecionado.telefone, msg);
+};
+
+// --- Agradecimento (a qualquer momento) --- //
+document.getElementById("acaoAgradecer").onclick = () => {
+  modalAcoes.style.display = "none";
+  if (!(agendamentoSelecionado.telefone || "").replace(/\D/g, "")) return alert("Telefone não informado!");
+  abrirWhatsApp(agendamentoSelecionado.telefone, msgAgradecimento(agendamentoSelecionado.nome));
 };
 
 // --- Excluir --- //

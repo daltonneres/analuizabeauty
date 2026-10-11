@@ -55,6 +55,8 @@
       <button id="btnDisponibilidade" class="btnSecundario" aria-label="Editar disponibilidade de dias e horários">📅 Disponibilidade</button>
       <button id="btnPagamentos" class="btnSecundario" aria-label="Configurar chave Pix e taxa de reserva">💳 Pagamentos</button>
       <button id="btnSinais" class="btnSecundario" aria-label="Conferir pagamentos das taxas de reserva">💰 Sinais</button>
+      <button id="btnAniversarios" class="btnSecundario" aria-label="Ver aniversariantes do mês">🎂 Aniversários</button>
+      <button id="btnMeta" class="btnSecundario" aria-label="Meta mensal e gráficos">🎯 Meta</button>
       <button id="btnExportar" class="btnSecundario" aria-label="Exportar agendamentos em PDF">📄 Exportar PDF</button>
       <button id="btnApagarMes" class="btnPerigo" aria-label="Apagar agendamentos do mês">🗑️ Apagar mês</button>
       <button id="btnNovaDespesa" class="btnPerigo" aria-label="Adicionar nova despesa">💸 Nova Despesa</button>
@@ -302,6 +304,63 @@
       <h2>💰 Taxa de reserva</h2>
       <p class="pag-aviso">Clientes que agendaram com a taxa de reserva. Confirme quando o pagamento for recebido — a cliente é avisada pelo WhatsApp.</p>
       <div id="listaSinais" class="sinal-lista"></div>
+    </div>
+  </div>
+
+  <!-- Modal Aniversários do mês -->
+  <div id="modalAniversarios" class="modal">
+    <div class="modal-content modal-sinais">
+      <span class="close" id="fecharAniversarios">&times;</span>
+      <h2>🎂 Aniversariantes</h2>
+      <p class="pag-aviso">Clientes que informaram a data de aniversário no chat, organizadas pelo mês escolhido.</p>
+      <label>Mês:</label>
+      <select id="selectMesAniversario"></select>
+      <div id="listaAniversarios" class="sinal-lista"></div>
+    </div>
+  </div>
+
+  <!-- Pop-up: aniversariante do mês com atendimento hoje -->
+  <div id="modalAniversarioHoje" class="modal">
+    <div class="modal-content modal-sinais">
+      <span class="close" id="fecharAniversarioHoje">&times;</span>
+      <h2>🎉 Aniversariante no atendimento de hoje!</h2>
+      <p class="pag-aviso">Hoje você atende cliente que faz aniversário neste mês. Que tal um carinho especial? 💖</p>
+      <div id="listaAniversarioHoje" class="sinal-lista"></div>
+      <button id="entendiAniversarioHoje" class="btnPrimario">Entendi</button>
+    </div>
+  </div>
+
+  <!-- Modal Meta mensal -->
+  <div id="modalMeta" class="modal">
+    <div class="modal-content modal-meta">
+      <span class="close" id="fecharMeta">&times;</span>
+      <h2>🎯 Meta mensal</h2>
+
+      <label>Mês:</label>
+      <select id="selectMesMeta"></select>
+
+      <div class="meta-form">
+        <label>Meta bruta do mês (R$):</label>
+        <input type="number" id="metaValor" min="1" step="50" placeholder="Ex: 5000" />
+        <p class="pag-aviso" id="metaInfoForm"></p>
+        <div class="sinal-acoes">
+          <button id="salvarMetaMes" class="btnPrimario">💾 Só para este mês</button>
+          <button id="salvarMetaPadrao" class="btnSecundario">📌 Usar em todos os meses</button>
+          <button id="usarMetaPadrao" class="btnFechar" style="display:none">↩️ Voltar à meta padrão</button>
+        </div>
+      </div>
+
+      <div id="metaConteudo"></div>
+    </div>
+  </div>
+
+  <!-- Modal Finalização do atendimento -->
+  <div id="modalFinalizacao" class="modal">
+    <div class="modal-content modal-sinais">
+      <span class="close" id="fecharFinalizacao" title="Decidir depois">&times;</span>
+      <h2>✅ Finalizar atendimento</h2>
+      <p class="pag-aviso" id="finalizacaoContador"></p>
+      <div id="finalizacaoCorpo"></div>
     </div>
   </div>
 
@@ -1039,6 +1098,26 @@ table {
 .badge-sinal { font-size: .78rem; font-weight: 600; white-space: nowrap; }
 .badge-sinal.pago { color: var(--verde); }
 .badge-sinal.expirado { color: #c0584f; }
+.sinal-status.aniv { background: var(--dourado); color: #333; }
+.sinal-card.aniv-hoje { border-color: var(--dourado); background: #fffaf0; }
+
+/* --- Meta mensal --- */
+.modal-meta { max-width: 780px; }
+.meta-form { background: var(--off-white); border: 1px solid rgba(212,175,55,.4); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 8px; }
+.meta-barra { height: 26px; border-radius: 50px; background: #eadfe0; overflow: hidden; display: flex; }
+.meta-barra .real { background: var(--verde); }
+.meta-barra .proj { background: var(--dourado); }
+.meta-legenda { display: flex; flex-wrap: wrap; gap: 14px; font-size: .8rem; color: var(--text-soft); margin-top: 6px; }
+.meta-legenda i { display: inline-block; width: 10px; height: 10px; border-radius: 50%; margin-right: 5px; }
+.meta-pct { font-family: var(--font-display); font-size: 2.2rem; font-weight: 600; color: var(--verde); line-height: 1.1; }
+.meta-msg { border-left: 4px solid var(--dourado); background: #fffaf0; border-radius: 10px; padding: 14px 16px; color: var(--text); font-size: .95rem; line-height: 1.55; }
+.meta-cards { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; }
+.meta-card { background: #fff; border: 1px solid rgba(212,175,55,.4); border-radius: 12px; padding: 12px 14px; }
+.meta-card small { display: block; color: var(--text-soft); font-size: .76rem; margin-bottom: 2px; }
+.meta-card strong { font-size: 1.05rem; color: var(--verde); }
+.meta-card.destaque strong { color: #b8952b; }
+.meta-grafico-titulo { font-family: var(--font-display); font-weight: 600; color: var(--verde); margin: 8px 0 0; }
+.meta-grafico { position: relative; height: 240px; }
 </style>
 
 <!-- Modal Esqueci Senha -->
@@ -1073,6 +1152,7 @@ table {
       <button id="acaoEditar" class="btnPrimario">✏️ Editar Atendimento</button>
       <button id="acaoWhats" class="btnSecundario">💬 Confirmar no WhatsApp</button>
       <button id="acaoAtraso" class="btnSecundario">⏰ Avisar atraso (20 min)</button>
+      <button id="acaoAgradecer" class="btnSecundario">💖 Enviar agradecimento</button>
       <button id="acaoExcluir" class="btnPerigo">🗑️ Excluir Atendimento</button>
       <button id="acaoFechar" class="btnFechar">❌ Fechar</button>
     </div>
@@ -1111,6 +1191,7 @@ table {
     })();
   </script>
 
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.29/jspdf.plugin.autotable.min.js"></script>
 
