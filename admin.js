@@ -10,6 +10,8 @@ import {
   setDoc,
   updateDoc,
   addDoc,
+  query,
+  where,
   arrayUnion,
   arrayRemove
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
@@ -143,21 +145,20 @@ function criarFiltros() {
   selectMes.style.padding = "6px";
   selectMes.style.borderRadius = "6px";
 
-const meses = [
-  { nome: "Novembro 2025", mes: "2025-11" },
-  { nome: "Dezembro 2025", mes: "2025-12" },
-
-  { nome: "Janeiro 2026", mes: "2026-01" },
-  { nome: "Fevereiro 2026", mes: "2026-02" },
-  { nome: "Março 2026", mes: "2026-03" },
-  { nome: "Abril 2026", mes: "2026-04" },
-  { nome: "Maio 2026", mes: "2026-05" },
-  { nome: "Junho 2026", mes: "2026-06" },
-  { nome: "Julho 2026", mes: "2026-07" },
-  { nome: "Agosto 2026", mes: "2026-08" },
-  { nome: "Setembro 2026", mes: "2026-09" },
-  { nome: "Outubro 2026", mes: "2026-10" },
-];
+// Meses do filtro: de Novembro/2025 até 12 meses à frente (atualiza sozinho)
+const nomesMesesFiltro = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+const meses = [];
+{
+  const hoje = new Date();
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 12, 1);
+  for (let d = new Date(2025, 10, 1); d <= fim; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+    meses.push({
+      nome: `${nomesMesesFiltro[d.getMonth()]} ${d.getFullYear()}`,
+      mes: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    });
+  }
+}
 
   meses.forEach(m => {
     const opt = document.createElement("option");
@@ -228,19 +229,30 @@ const DISPONIBILIDADE_PADRAO = {
 };
 
 async function carregarConfigDisponibilidade() {
-  const snap = await getDoc(dispRef);
-  if (!snap.exists()) return JSON.parse(JSON.stringify(DISPONIBILIDADE_PADRAO));
-  const dados = snap.data();
-  return {
-    diasSemana: { ...DISPONIBILIDADE_PADRAO.diasSemana, ...(dados.diasSemana || {}) },
-    periodos: {
-      manha: { ...DISPONIBILIDADE_PADRAO.periodos.manha, ...(dados.periodos?.manha || {}) },
-      tarde: { ...DISPONIBILIDADE_PADRAO.periodos.tarde, ...(dados.periodos?.tarde || {}) },
-      noite: { ...DISPONIBILIDADE_PADRAO.periodos.noite, ...(dados.periodos?.noite || {}) }
-    },
-    diasBloqueados: dados.diasBloqueados || [],
-    horariosBloqueados: dados.horariosBloqueados || {}
-  };
+  try {
+    const snap = await getDoc(dispRef);
+    if (!snap.exists()) return JSON.parse(JSON.stringify(DISPONIBILIDADE_PADRAO));
+    const dados = snap.data();
+    return {
+      diasSemana: { ...DISPONIBILIDADE_PADRAO.diasSemana, ...(dados.diasSemana || {}) },
+      periodos: {
+        manha: { ...DISPONIBILIDADE_PADRAO.periodos.manha, ...(dados.periodos?.manha || {}) },
+        tarde: { ...DISPONIBILIDADE_PADRAO.periodos.tarde, ...(dados.periodos?.tarde || {}) },
+        noite: { ...DISPONIBILIDADE_PADRAO.periodos.noite, ...(dados.periodos?.noite || {}) }
+      },
+      diasBloqueados: dados.diasBloqueados || [],
+      horariosBloqueados: dados.horariosBloqueados || {}
+    };
+  } catch (e) {
+    console.error("Erro ao carregar disponibilidade:", e);
+    alert(
+      "⚠️ Não foi possível carregar a Disponibilidade.\n\n" +
+      "Erro: " + (e?.message || e) + "\n\n" +
+      "Isso geralmente acontece porque as Regras de Segurança do Firestore ainda não liberam a coleção 'disponibilidade'. " +
+      "Veja as instruções que te enviei para atualizar as regras no console do Firebase."
+    );
+    return JSON.parse(JSON.stringify(DISPONIBILIDADE_PADRAO));
+  }
 }
 
 function renderListasBloqueios(config) {
@@ -327,31 +339,324 @@ if (btnDisponibilidade) {
       }
     };
 
-    await setDoc(dispRef, { diasSemana, periodos }, { merge: true });
-    alert("✅ Configurações de disponibilidade salvas!");
+    try {
+      await setDoc(dispRef, { diasSemana, periodos }, { merge: true });
+      alert("✅ Configurações de disponibilidade salvas!");
+    } catch (e) {
+      console.error("Erro ao salvar disponibilidade:", e);
+      alert("⚠️ Erro ao salvar: " + (e?.message || e) + "\n\nVerifique as Regras de Segurança do Firestore para a coleção 'disponibilidade'.");
+    }
   });
 
   btnBloquearDia.addEventListener("click", async () => {
     const data = document.getElementById("dataBloqueioDia").value;
     if (!data) return alert("Escolha uma data para bloquear.");
-    await setDoc(dispRef, { diasBloqueados: arrayUnion(data) }, { merge: true });
-    document.getElementById("dataBloqueioDia").value = "";
-    abrirModalDisponibilidade();
+    try {
+      await setDoc(dispRef, { diasBloqueados: arrayUnion(data) }, { merge: true });
+      document.getElementById("dataBloqueioDia").value = "";
+      abrirModalDisponibilidade();
+    } catch (e) {
+      console.error("Erro ao bloquear dia:", e);
+      alert("⚠️ Erro ao bloquear: " + (e?.message || e));
+    }
   });
 
   btnBloquearHorario.addEventListener("click", async () => {
     const data = document.getElementById("dataBloqueioHorario").value;
     const hora = document.getElementById("horaBloqueioHorario").value;
     if (!data || !hora) return alert("Escolha a data e o horário para bloquear.");
-    await setDoc(dispRef, { horariosBloqueados: { [data]: arrayUnion(hora) } }, { merge: true });
-    document.getElementById("dataBloqueioHorario").value = "";
-    document.getElementById("horaBloqueioHorario").value = "";
-    abrirModalDisponibilidade();
+    try {
+      await setDoc(dispRef, { horariosBloqueados: { [data]: arrayUnion(hora) } }, { merge: true });
+      document.getElementById("dataBloqueioHorario").value = "";
+      document.getElementById("horaBloqueioHorario").value = "";
+      abrirModalDisponibilidade();
+    } catch (e) {
+      console.error("Erro ao bloquear horário:", e);
+      alert("⚠️ Erro ao bloquear: " + (e?.message || e));
+    }
   });
 
   window.addEventListener("click", (e) => {
     if (e.target === modalDisponibilidade) modalDisponibilidade.style.display = "none";
   });
+}
+
+// --- Sincroniza a coleção pública "horariosOcupados" (sem dados pessoais) ---
+// usada pelo chat do site para saber quais horários já não estão mais livres.
+async function adicionarHorarioOcupado(data, horario) {
+  if (!data || !horario) return;
+  try {
+    await addDoc(collection(db, "horariosOcupados"), { data, horario });
+  } catch (e) {
+    console.error("Erro ao registrar horário ocupado:", e);
+  }
+}
+
+async function removerHorarioOcupado(data, horario) {
+  if (!data || !horario) return;
+  try {
+    const snap = await getDocs(
+      query(collection(db, "horariosOcupados"), where("data", "==", data), where("horario", "==", horario))
+    );
+    for (const docSnap of snap.docs) {
+      await deleteDoc(doc(db, "horariosOcupados", docSnap.id));
+    }
+  } catch (e) {
+    console.error("Erro ao liberar horário ocupado:", e);
+  }
+}
+
+// --- Utilidades --- //
+function esc(s) {
+  return String(s ?? "").replace(/[&<>"']/g, (c) => (
+    { "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" }[c]
+  ));
+}
+
+function brl(n) {
+  return "R$ " + Number(n || 0).toFixed(2).replace(".", ",");
+}
+
+function tempoRestante(prazoISO) {
+  const ms = new Date(prazoISO).getTime() - Date.now();
+  if (isNaN(ms)) return { expirado: false, texto: "" };
+  if (ms <= 0) return { expirado: true, texto: "Prazo expirado" };
+  const h = Math.floor(ms / 3600000);
+  const m = Math.floor((ms % 3600000) / 60000);
+  return { expirado: false, texto: `${h}h${String(m).padStart(2, "0")}min restantes` };
+}
+
+function sinalBadge(ag) {
+  if (!ag.sinalValor) return "-";
+  if (ag.sinalStatus === "pago") return `<span class="badge-sinal pago">✅ Pago</span>`;
+  const t = tempoRestante(ag.sinalPrazo);
+  return t.expirado
+    ? `<span class="badge-sinal expirado">⚠️ Expirado</span>`
+    : `<span class="badge-sinal">⏳ Aguardando</span>`;
+}
+
+function atualizarBotaoSinais(pendentes) {
+  const btn = document.getElementById("btnSinais");
+  if (btn) btn.textContent = pendentes > 0 ? `💰 Sinais (${pendentes})` : "💰 Sinais";
+}
+
+const MSG_LOCAL =
+  `📍 Local: *Espaço Ana Luiza Makeup*  \n` +
+  `Salto Do Lontra-PR\n` +
+  `🗺️ https://maps.app.goo.gl/n74UzXbv88cw8Mbq5?g_st=ipc`;
+
+// Abre o WhatsApp; aceita uma janela já aberta (evita bloqueio de pop-up após await)
+function abrirWhatsApp(telefone, msg, janela) {
+  const tel = (telefone || "").replace(/\D/g, "");
+  const link = `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
+  if (janela && !janela.closed) janela.location.href = link;
+  else window.open(link, "_blank");
+}
+
+// --- Pagamentos: chave Pix, % da taxa de reserva e prazo --- //
+const btnPagamentos = document.getElementById("btnPagamentos");
+const modalPagamentos = document.getElementById("modalPagamentos");
+const pagRef = doc(db, "configuracoes", "pagamento");
+
+async function abrirModalPagamentos() {
+  let cfg = { tipoChave: "CPF", chavePix: "", titular: "", percentualSinal: 50, prazoHoras: 12 };
+  try {
+    const snap = await getDoc(pagRef);
+    if (snap.exists()) cfg = { ...cfg, ...snap.data() };
+  } catch (e) {
+    console.error("Erro ao carregar pagamentos:", e);
+    alert(
+      "⚠️ Não foi possível carregar as configurações de Pagamentos.\n\n" +
+      "Erro: " + (e?.message || e) + "\n\n" +
+      "Verifique as Regras de Segurança do Firestore para a coleção 'configuracoes'."
+    );
+  }
+  document.getElementById("tipoChavePix").value = cfg.tipoChave || "CPF";
+  document.getElementById("chavePix").value = cfg.chavePix || "";
+  document.getElementById("titularPix").value = cfg.titular || "";
+  document.getElementById("percentualSinal").value = cfg.percentualSinal ?? 50;
+  document.getElementById("prazoHoras").value = cfg.prazoHoras ?? 12;
+  modalPagamentos.style.display = "flex";
+}
+
+if (btnPagamentos) {
+  btnPagamentos.addEventListener("click", abrirModalPagamentos);
+  document.getElementById("fecharPagamentos").addEventListener("click", () => modalPagamentos.style.display = "none");
+  window.addEventListener("click", (e) => { if (e.target === modalPagamentos) modalPagamentos.style.display = "none"; });
+
+  document.getElementById("salvarPagamentos").addEventListener("click", async () => {
+    const tipoChave = document.getElementById("tipoChavePix").value;
+    const chavePix = document.getElementById("chavePix").value.trim();
+    const titular = document.getElementById("titularPix").value.trim();
+    const percentualSinal = parseFloat(document.getElementById("percentualSinal").value);
+    const prazoHoras = parseFloat(document.getElementById("prazoHoras").value);
+
+    if (!chavePix) return alert("Informe a chave Pix.");
+    if (!(percentualSinal > 0 && percentualSinal <= 100)) return alert("A taxa de reserva deve ficar entre 1% e 100%.");
+    if (!(prazoHoras >= 1)) return alert("O prazo deve ser de pelo menos 1 hora.");
+
+    try {
+      await setDoc(pagRef, { tipoChave, chavePix, titular, percentualSinal, prazoHoras }, { merge: true });
+      alert("✅ Configurações de pagamento salvas!");
+      modalPagamentos.style.display = "none";
+    } catch (e) {
+      console.error("Erro ao salvar pagamentos:", e);
+      alert("⚠️ Erro ao salvar: " + (e?.message || e) + "\n\nVerifique as Regras de Segurança do Firestore para a coleção 'configuracoes'.");
+    }
+  });
+}
+
+// --- Sinais: conferir quem já pagou a taxa de reserva --- //
+const btnSinais = document.getElementById("btnSinais");
+const modalSinais = document.getElementById("modalSinais");
+const listaSinais = document.getElementById("listaSinais");
+
+function msgPagamentoConfirmado(ag) {
+  const nome = ag.nome || "Maravilhosa";
+  const data = ag.data ? ag.data.split("-").reverse().join("/") : "-";
+  const restante = Math.max(Number(ag.valor || 0) - Number(ag.desconto || 0) - Number(ag.sinalValor || 0), 0);
+  return (
+`Olá ${nome} 😍✨
+
+Recebemos o pagamento da sua taxa de reserva (${brl(ag.sinalValor)}). Muito obrigada! 🥰
+
+Seu horário está confirmado:
+📅 *${data}* às *${ag.horario}*
+💄 ${ag.procedimento}
+
+O restante (${brl(restante)}) é pago no dia do atendimento. 💖
+
+${MSG_LOCAL}
+
+Lembrando:
+• Cancelamentos com no mínimo 7 dias úteis de antecedência;
+• Reagendamentos com no mínimo 20 minutos de antecedência do seu horário;
+• Tolerância de atraso: 20 minutos.
+
+Te esperamos com muito carinho! 💄✨`
+  );
+}
+
+async function abrirModalSinais() {
+  listaSinais.innerHTML = `<p class="sinal-vazio">Carregando...</p>`;
+  modalSinais.style.display = "flex";
+
+  let lista = [];
+  try {
+    const snap = await getDocs(collection(db, "agendamentos"));
+    snap.forEach((d) => {
+      const ag = d.data();
+      if (!ag.sinalValor) return;
+      ag.id = d.id;
+      lista.push(ag);
+    });
+  } catch (e) {
+    listaSinais.innerHTML = `<p class="sinal-vazio">Erro ao carregar: ${esc(e?.message || e)}</p>`;
+    return;
+  }
+
+  // Aguardando primeiro (prazo mais próximo no topo); depois os já pagos (mais recentes primeiro)
+  lista.sort((a, b) => {
+    const pa = a.sinalStatus === "pago", pb = b.sinalStatus === "pago";
+    if (pa !== pb) return pa ? 1 : -1;
+    if (!pa) return new Date(a.sinalPrazo) - new Date(b.sinalPrazo);
+    return new Date(b.sinalPagoEm || 0) - new Date(a.sinalPagoEm || 0);
+  });
+
+  atualizarBotaoSinais(lista.filter((a) => a.sinalStatus !== "pago").length);
+
+  if (!lista.length) {
+    listaSinais.innerHTML = `<p class="sinal-vazio">Nenhuma cliente com taxa de reserva até agora.</p>`;
+    return;
+  }
+
+  listaSinais.innerHTML = "";
+  lista.forEach((ag) => {
+    const pago = ag.sinalStatus === "pago";
+    const tempo = pago ? null : tempoRestante(ag.sinalPrazo);
+    const expirado = !!tempo?.expirado;
+
+    const card = document.createElement("div");
+    card.className = "sinal-card" + (pago ? " pago" : expirado ? " expirado" : "");
+
+    const statusTxt = pago ? "✅ Pago" : expirado ? "⚠️ Prazo expirado" : `⏳ ${tempo?.texto || "Aguardando"}`;
+    const statusCls = pago ? "pago" : expirado ? "expirado" : "";
+    const dataBr = ag.data ? ag.data.split("-").reverse().join("/") : "-";
+    const restante = Math.max(Number(ag.valor || 0) - Number(ag.desconto || 0) - Number(ag.sinalValor || 0), 0);
+
+    card.innerHTML = `
+      <div class="sinal-topo">
+        <span class="sinal-nome">${esc(ag.nome) || "-"}</span>
+        <span class="sinal-status ${statusCls}">${statusTxt}</span>
+      </div>
+      <div class="sinal-info">
+        📞 ${esc(ag.telefone) || "-"}<br>
+        📅 ${dataBr} às ${esc(ag.horario) || "-"} · 💄 ${esc(ag.procedimento) || "-"}<br>
+        💰 Reserva: <strong>${brl(ag.sinalValor)}</strong> (${esc(ag.sinalPercentual || 50)}%) via ${esc(ag.sinalForma || ag.formaPagamento || "-")} · Restante: ${brl(restante)}
+      </div>
+      <div class="sinal-acoes"></div>
+    `;
+    const acoes = card.querySelector(".sinal-acoes");
+
+    if (!pago) {
+      const btnOk = document.createElement("button");
+      btnOk.className = "btnPrimario";
+      btnOk.textContent = "✅ Pagamento recebido";
+      btnOk.onclick = async () => {
+        if (!confirm(`Confirmar que ${ag.nome || "a cliente"} já pagou a taxa de reserva de ${brl(ag.sinalValor)}?`)) return;
+        const janela = window.open("", "_blank"); // abre antes do await para não ser bloqueada
+        try {
+          await updateDoc(doc(db, "agendamentos", ag.id), {
+            sinalStatus: "pago",
+            sinalPagoEm: new Date().toISOString()
+          });
+        } catch (e) {
+          if (janela) janela.close();
+          return alert("⚠️ Erro ao confirmar: " + (e?.message || e));
+        }
+        if ((ag.telefone || "").replace(/\D/g, "")) {
+          abrirWhatsApp(ag.telefone, msgPagamentoConfirmado(ag), janela);
+        } else {
+          if (janela) janela.close();
+          alert("Pagamento confirmado, mas a cliente não tem telefone cadastrado para avisar no WhatsApp.");
+        }
+        abrirModalSinais();
+        carregarAgendamentos();
+      };
+      acoes.appendChild(btnOk);
+
+      const btnLiberar = document.createElement("button");
+      btnLiberar.className = "btnPerigo";
+      btnLiberar.textContent = "🗑️ Liberar horário";
+      btnLiberar.onclick = async () => {
+        if (!confirm(`Excluir o agendamento de ${ag.nome || "a cliente"} e liberar ${dataBr} às ${ag.horario} para outras clientes?`)) return;
+        await deleteDoc(doc(db, "agendamentos", ag.id));
+        await removerHorarioOcupado(ag.data, ag.horario);
+        abrirModalSinais();
+        carregarAgendamentos();
+      };
+      acoes.appendChild(btnLiberar);
+    } else {
+      const btnDesfazer = document.createElement("button");
+      btnDesfazer.className = "btnSecundario";
+      btnDesfazer.textContent = "↩️ Desfazer confirmação";
+      btnDesfazer.onclick = async () => {
+        if (!confirm("Voltar este pagamento para 'aguardando'?")) return;
+        await updateDoc(doc(db, "agendamentos", ag.id), { sinalStatus: "aguardando", sinalPagoEm: null });
+        abrirModalSinais();
+        carregarAgendamentos();
+      };
+      acoes.appendChild(btnDesfazer);
+    }
+
+    listaSinais.appendChild(card);
+  });
+}
+
+if (btnSinais) {
+  btnSinais.addEventListener("click", abrirModalSinais);
+  document.getElementById("fecharSinais").addEventListener("click", () => modalSinais.style.display = "none");
+  window.addEventListener("click", (e) => { if (e.target === modalSinais) modalSinais.style.display = "none"; });
 }
 
 // --- Carregar agendamentos --- //
@@ -395,6 +700,8 @@ agendamentos.sort((a, b) => {
   return (a.horario || "").localeCompare(b.horario || "");
 });
 
+  atualizarBotaoSinais(agendamentos.filter((a) => a.sinalStatus === "aguardando").length);
+
   let total = 0;
   let pagamentos = {};
   let contador = 0;
@@ -416,27 +723,28 @@ agendamentos.sort((a, b) => {
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${ag.nome || "-"}</td>
-      <td>${ag.telefone || "-"}</td>
-      <td>${ag.aniversario && ag.aniversario !== "Não informado" ? ag.aniversario : "-"}</td>
+      <td>${esc(ag.nome) || "-"}</td>
+      <td>${esc(ag.telefone) || "-"}</td>
+      <td>${ag.aniversario && ag.aniversario !== "Não informado" ? esc(ag.aniversario) : "-"}</td>
       <td>${ag.data ? ag.data.split("-").reverse().join("/") : "-"}</td>
-      <td>${ag.periodo || "-"}</td>
-      <td>${ag.horario || "-"}</td>
-      <td>${ag.procedimento || "-"}</td>
-      <td>${ag.formaPagamento || "-"}</td>
+      <td>${esc(ag.periodo) || "-"}</td>
+      <td>${esc(ag.horario) || "-"}</td>
+      <td>${esc(ag.procedimento) || "-"}</td>
+      <td>${esc(ag.formaPagamento) || "-"}</td>
       <td>R$ ${valor.toFixed(2)}</td>
       <td>${desconto > 0 ? "Sim (R$ " + desconto.toFixed(2) + ")" : "Não"}</td>
       <td><strong>R$ ${valorFinal.toFixed(2)}</strong></td>
+      <td>${sinalBadge(ag)}</td>
       <td><input type="checkbox" class="chkConcluir" data-id="${ag.id}" ${concluido ? "checked" : ""}></td>
       <td>
         <button class="btnAcoes"
           data-id="${ag.id}"
-          data-tel="${ag.telefone}"
-          data-nome="${ag.nome}"
-          data-data="${ag.data}"
-          data-periodo="${ag.periodo}"
-          data-horario="${ag.horario}"
-          data-procedimento="${ag.procedimento}"
+          data-tel="${esc(ag.telefone)}"
+          data-nome="${esc(ag.nome)}"
+          data-data="${esc(ag.data)}"
+          data-periodo="${esc(ag.periodo)}"
+          data-horario="${esc(ag.horario)}"
+          data-procedimento="${esc(ag.procedimento)}"
           data-valor="${(ag.valor - (ag.desconto || 0)).toFixed(2)}">
           ⚙️ Ações
         </button>
@@ -624,6 +932,12 @@ document.getElementById("acaoEditar").onclick = async () => {
       nome, telefone, data, periodo, horario, procedimento, formaPagamento, valor, desconto, observacoes: obs
     });
 
+    // Atualiza a coleção pública de horários ocupados caso a data/horário tenham mudado
+    if (ag.data !== data || ag.horario !== horario) {
+      await removerHorarioOcupado(ag.data, ag.horario);
+      await adicionarHorarioOcupado(data, horario);
+    }
+
     alert("✅ Atendimento atualizado!");
     document.getElementById("modalNovo").style.display = "none";
     carregarAgendamentos();
@@ -660,10 +974,23 @@ Te esperamos com muito carinho! 💄✨
   window.open(link, "_blank");
 };
 
+// --- Aviso de atraso (tolerância de 20 minutos) --- //
+document.getElementById("acaoAtraso").onclick = () => {
+  modalAcoes.style.display = "none";
+  const nome = agendamentoSelecionado.nome || "Maravilhosa";
+  if (!(agendamentoSelecionado.telefone || "").replace(/\D/g, "")) return alert("Telefone não informado!");
+  const msg =
+`Olá ${nome}! 😊
+
+O tempo máximo de espera é de 20 minutos. Como o atraso ultrapassou esse período, não conseguirei mais realizar seu atendimento hoje. Podemos remarcar novamente em um dia que você esteja com tempo?`;
+  abrirWhatsApp(agendamentoSelecionado.telefone, msg);
+};
+
 // --- Excluir --- //
 document.getElementById("acaoExcluir").onclick = async () => {
   if (!confirm("Tem certeza que deseja excluir este atendimento?")) return;
   await deleteDoc(doc(db, "agendamentos", agendamentoSelecionado.id));
+  await removerHorarioOcupado(agendamentoSelecionado.data, agendamentoSelecionado.horario);
   alert("🗑️ Atendimento excluído!");
   modalAcoes.style.display = "none";
   carregarAgendamentos();
@@ -712,6 +1039,7 @@ async function salvarNovoAtendimento() {
     nome, telefone, data, periodo, horario, procedimento,
     formaPagamento, valor, desconto, observacoes: obs, concluido: false
   });
+  await adicionarHorarioOcupado(data, horario);
 
   alert("✅ Atendimento adicionado!");
   document.getElementById("modalNovo").style.display = "none";
@@ -834,6 +1162,7 @@ async function apagarPorMes(mes) {
     const ag = docSnap.data();
     if (ag.data?.startsWith(mes)) {
       await deleteDoc(doc(db, "agendamentos", docSnap.id));
+      await removerHorarioOcupado(ag.data, ag.horario);
     }
   }
 

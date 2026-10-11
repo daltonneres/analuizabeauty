@@ -18,6 +18,10 @@ const sendBtn = document.getElementById('sendBtn');
 let step = 0;
 const answers = {};
 
+// Taxa de reserva (sinal) calculada para o agendamento em andamento
+let reserva = null;
+let atendimentoFinalizado = false;
+
 const questions = [
   "👋 Olá, MARAVILHOSA! ✨💖\nSeja muito bem-vinda(o) ao autoatendimento da Ana Luiza Fernandes Makeup!\nPara começarmos, qual é o seu nome? 😊",
   "Perfeito, {nome}! Agora, poderia me informar seu número de telefone com DDD? 📞",
@@ -43,16 +47,20 @@ function resolveTemplate(texto) {
 let inactivityTimer;
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
+  // Mais tempo na etapa de pagamento (a cliente precisa ler as regras e copiar o Pix)
+  const ms = atendimentoFinalizado ? 600000 : (step >= 7 ? 180000 : 30000);
   inactivityTimer = setTimeout(() => {
     botMessage("⏳ Notei que você ficou um tempinho sem responder, então reiniciei nosso atendimento. Vamos começar de novo? 😊");
     chatMessages.innerHTML = "";
     step = 0;
+    reserva = null;
+    atendimentoFinalizado = false;
     for (let key in answers) delete answers[key];
     userInput.value = '';
     userInput.style.display = 'block';
     sendBtn.style.display = 'block';
     askNext();
-  }, 30000);
+  }, ms);
 }
 
 function botMessage(text) {
@@ -130,16 +138,92 @@ async function carregarDisponibilidade() {
 }
 const dispoConfigPromise = carregarDisponibilidade();
 
+// --- Configuração de pagamento (chave Pix, % da reserva e prazo — definidos no painel) ---
+let pagamentoConfig = { tipoChave: "", chavePix: "", titular: "", percentualSinal: 50, prazoHoras: 12 };
+
+async function carregarPagamentoConfig() {
+  try {
+    const snap = await getDoc(doc(db, "configuracoes", "pagamento"));
+    if (snap.exists()) {
+      const d = snap.data();
+      pagamentoConfig = {
+        tipoChave: d.tipoChave || "",
+        chavePix: (d.chavePix || "").trim(),
+        titular: d.titular || "",
+        percentualSinal: Number(d.percentualSinal) > 0 ? Number(d.percentualSinal) : 50,
+        prazoHoras: Number(d.prazoHoras) > 0 ? Number(d.prazoHoras) : 12
+      };
+    }
+  } catch (e) {
+    console.error("Não foi possível carregar a configuração de pagamento, usando padrão:", e);
+  }
+  return pagamentoConfig;
+}
+const pagamentoConfigPromise = carregarPagamentoConfig();
+
+function formatarReais(n) {
+  return "R$ " + Number(n || 0).toFixed(2).replace(".", ",");
+}
+
+function formatarPrazo(date) {
+  const dd = String(date.getDate()).padStart(2, "0");
+  const mm = String(date.getMonth() + 1).padStart(2, "0");
+  const hh = String(date.getHours()).padStart(2, "0");
+  const mi = String(date.getMinutes()).padStart(2, "0");
+  return `${dd}/${mm} às ${hh}:${mi}`;
+}
+
+function copiarTexto(texto) {
+  if (navigator.clipboard && navigator.clipboard.writeText) {
+    return navigator.clipboard.writeText(texto);
+  }
+  return new Promise((resolve, reject) => {
+    const ta = document.createElement("textarea");
+    ta.value = texto;
+    ta.style.position = "fixed";
+    ta.style.opacity = "0";
+    document.body.appendChild(ta);
+    ta.select();
+    try { document.execCommand("copy") ? resolve() : reject(); } catch (err) { reject(err); }
+    ta.remove();
+  });
+}
+
+// Mostra a chave Pix no chat com botão de copiar
+function mostrarChavePix() {
+  const cfg = pagamentoConfig;
+  const rotulo = cfg.tipoChave ? `Chave Pix (${cfg.tipoChave})` : "Chave Pix";
+  botMessage(`🔑 ${rotulo}:\n${cfg.chavePix}` + (cfg.titular ? `\n👤 Titular: ${cfg.titular}` : ""));
+  const wrap = document.createElement("div");
+  wrap.id = "optionsDiv";
+  const btn = document.createElement("button");
+  btn.className = "chat-option-btn";
+  btn.innerText = "📋 Copiar chave Pix";
+  btn.onclick = async () => {
+    try {
+      await copiarTexto(cfg.chavePix);
+      btn.innerText = "✅ Chave copiada!";
+    } catch (e) {
+      btn.innerText = "Copie manualmente a chave acima";
+    }
+    setTimeout(() => { btn.innerText = "📋 Copiar chave Pix"; }, 2500);
+    resetInactivityTimer();
+  };
+  wrap.appendChild(btn);
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
 // --- Retorna a lista de horários já reservados ou bloqueados numa data ---
 async function getHorariosIndisponiveis(dataString) {
   if (!dataString) return [];
   const bloqueadosManual = dispoConfig.horariosBloqueados[dataString] || [];
   const ocupados = [];
   try {
-    const snap = await getDocs(query(collection(db, "agendamentos"), where("data", "==", dataString)));
+    const snap = await getDocs(query(collection(db, "horariosOcupados"), where("data", "==", dataString)));
     snap.forEach((docSnap) => {
-      const ag = docSnap.data();
-      if (ag.horario) ocupados.push(ag.horario);
+      const item = docSnap.data();
+      if (item.horario) ocupados.push(item.horario);
     });
   } catch (e) {
     console.error("Não foi possível verificar horários já reservados:", e);
@@ -192,11 +276,20 @@ function askNext() {
     if (question === "Qual período prefere? (Manhã, Tarde, Noite)") showPeriods();
     else if (question === "Quais procedimentos deseja?") showProcedures();
     else if (question === "Escolha a data:") showCalendar();
-    else if (question === "Qual a forma de pagamento? (PIX, Dinheiro, Cartão de Crédito, Cartão de Débito)") showOptions(question);
+    else if (question === "Qual a forma de pagamento? (PIX, Dinheiro, Cartão de Crédito, Cartão de Débito)") showReservaInfo(question);
     else botMessage(resolveTemplate(question));
   } else {
+    atendimentoFinalizado = true;
     sendToWhatsAppAndFirestore();
-    botMessage(resolveTemplate("🎉 Prontinho, {nome}! Recebi todas as suas informações. Te chamo no WhatsApp para confirmar tudo certinho. Até já! 💕"));
+    if (reserva) {
+      botMessage(resolveTemplate(
+        `🎉 Prontinho, {nome}! Seu horário está pré-reservado por ${pagamentoConfig.prazoHoras} horas (até ${formatarPrazo(new Date(reserva.prazo))}), aguardando o pagamento da taxa de reserva de ${formatarReais(reserva.sinal)}.\n\n` +
+        `📎 Envie o comprovante na conversa do WhatsApp que acabou de abrir. Assim que a Ana confirmar o pagamento, sua reserva fica garantida! 💕`
+      ));
+      if (reserva.forma === "PIX" && pagamentoConfig.chavePix) mostrarChavePix();
+    } else {
+      botMessage(resolveTemplate("🎉 Prontinho, {nome}! Recebi todas as suas informações. Te chamo no WhatsApp para confirmar tudo certinho. Até já! 💕"));
+    }
   }
 }
 
@@ -270,11 +363,66 @@ async function showPeriodHours(period) {
   }
 }
 
-// --- Opções ---
+// --- Taxa de reserva: resumo, regras e aceite ---
+async function showReservaInfo(question) {
+  userInput.style.display = 'none';
+  sendBtn.style.display = 'none';
+  const cfg = await pagamentoConfigPromise;
+  const total = calcularValor(answers["Quais procedimentos deseja?"] || "");
+
+  // Se por algum motivo não foi possível calcular o valor, segue o fluxo antigo
+  if (!(total > 0)) {
+    reserva = null;
+    showOptions(question);
+    return;
+  }
+
+  const percentual = cfg.percentualSinal;
+  const sinal = Math.round(total * percentual) / 100;
+  const restante = Math.round((total - sinal) * 100) / 100;
+  reserva = { total, percentual, sinal, restante, forma: null, prazo: null };
+
+  botMessage(resolveTemplate(
+    `💖 {nome}, para garantir a sua data e o seu horário, é cobrada uma taxa de reserva de ${percentual}% do valor dos serviços.\n\n` +
+    `🧾 Resumo:\n` +
+    `• Total dos serviços: ${formatarReais(total)}\n` +
+    `• Taxa de reserva (${percentual}%): ${formatarReais(sinal)}\n` +
+    `• Restante, pago no dia do atendimento: ${formatarReais(restante)}`
+  ));
+
+  botMessage(
+    `⚠️ Por favor, leia com atenção:\n\n` +
+    `• A taxa de reserva não é reembolsável.\n` +
+    `• Cancelamentos devem ser solicitados com no mínimo 7 dias úteis de antecedência.\n` +
+    `• Para reagendar, entre em contato com no mínimo 20 minutos de antecedência do seu horário.\n` +
+    `• Tolerância de atraso: 20 minutos. Passado esse tempo, não será possível realizar o atendimento no dia e será necessário remarcar.\n` +
+    `• O pagamento da reserva deve ser feito em até ${cfg.prazoHoras} horas, com envio do comprovante.`
+  );
+
+  const optionsDiv = document.createElement('div');
+  optionsDiv.id = 'optionsDiv';
+  chatMessages.appendChild(optionsDiv);
+  const btn = document.createElement('button');
+  btn.className = "chat-option-btn";
+  btn.innerText = "✅ Li e concordo";
+  btn.onclick = () => {
+    answers["Aceitou as regras da reserva"] = "Sim";
+    userMessage("Li e concordo ✅");
+    optionsDiv.remove();
+    showOptions(question);
+    resetInactivityTimer();
+  };
+  optionsDiv.appendChild(btn);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// --- Opções de pagamento ---
 function showOptions(question) {
   userInput.style.display = 'none';
   sendBtn.style.display = 'none';
-  if (question === questions[7]) {
+  if (reserva) {
+    botMessage(resolveTemplate(`Como você prefere pagar a taxa de reserva de ${formatarReais(reserva.sinal)}, {nome}? 💳`));
+  } else if (question === questions[7]) {
     botMessage(resolveTemplate("Quase lá, {nome}! 💳 Qual será a forma de pagamento?"));
   } else {
     botMessage(resolveTemplate(question));
@@ -283,7 +431,10 @@ function showOptions(question) {
   optionsDiv.id = 'optionsDiv';
   chatMessages.appendChild(optionsDiv);
 
-  const options = ["PIX", "Dinheiro", "Cartão de Crédito", "Cartão de Débito"];
+  const options = reserva
+    ? ["PIX", "Cartão de Crédito", "Cartão de Débito", "Outros"]
+    : ["PIX", "Dinheiro", "Cartão de Crédito", "Cartão de Débito"];
+
   options.forEach(opt => {
     const btn = document.createElement('button');
     btn.className = "chat-option-btn";
@@ -292,12 +443,52 @@ function showOptions(question) {
       answers[question] = opt;
       userMessage(opt);
       optionsDiv.remove();
-      step++;
-      askNext();
+      if (reserva) {
+        reserva.forma = opt;
+        mostrarInstrucoesPagamento(opt);
+      } else {
+        step++;
+        askNext();
+      }
       resetInactivityTimer();
     };
     optionsDiv.appendChild(btn);
   });
+}
+
+// --- Instruções conforme a forma escolhida para pagar a reserva ---
+async function mostrarInstrucoesPagamento(forma) {
+  const cfg = await pagamentoConfigPromise;
+  const horas = cfg.prazoHoras;
+
+  if (forma === "PIX") {
+    if (cfg.chavePix) {
+      botMessage(resolveTemplate(`Perfeito, {nome}! Faça um Pix de ${formatarReais(reserva.sinal)} para a chave abaixo 👇`));
+      mostrarChavePix();
+      botMessage(`⏳ Você tem ${horas} horas para realizar o pagamento e enviar o comprovante pelo WhatsApp. Depois desse prazo, o horário poderá ser liberado para outra cliente.`);
+    } else {
+      botMessage(resolveTemplate(`Perfeito, {nome}! A Ana vai te enviar a chave Pix pelo WhatsApp.\n\n⏳ Você terá ${horas} horas para realizar o pagamento e enviar o comprovante.`));
+    }
+  } else if (forma === "Cartão de Crédito" || forma === "Cartão de Débito") {
+    botMessage(resolveTemplate(`Combinado, {nome}! A Ana vai te enviar pelo WhatsApp as instruções para pagar a reserva no cartão.\n\n⏳ O prazo para o pagamento é de ${horas} horas.`));
+  } else {
+    botMessage(resolveTemplate(`Tudo bem, {nome}! Combine com a Ana pelo WhatsApp como prefere pagar a reserva.\n\n⏳ O prazo para o pagamento é de ${horas} horas.`));
+  }
+
+  const optionsDiv = document.createElement('div');
+  optionsDiv.id = 'optionsDiv';
+  chatMessages.appendChild(optionsDiv);
+  const btn = document.createElement('button');
+  btn.className = "chat-option-btn";
+  btn.innerText = "✅ Finalizar e abrir WhatsApp";
+  btn.onclick = () => {
+    optionsDiv.remove();
+    step++;
+    askNext();
+    resetInactivityTimer();
+  };
+  optionsDiv.appendChild(btn);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 // --- Calendário ---
@@ -315,28 +506,18 @@ async function showCalendar() {
   const currentYear = today.getFullYear();
   const currentDay = today.getDate();
 
-  // --- MESES ATUALIZADOS (NOVEMBRO REMOVIDO + MARÇO E ABRIL INCLUÍDOS) ---
-  let monthsAvailable = [
-    { name: "Dezembro 2025", month: 11, year: 2025 },
-    { name: "Janeiro 2026", month: 0, year: 2026 },
-    { name: "Fevereiro 2026", month: 1, year: 2026 },
-    { name: "Março 2026", month: 2, year: 2026 },
-    { name: "Abril 2026", month: 3, year: 2026 },
-    { name: "Maio 2026", month: 4, year: 2026 },
-    { name: "Junho 2026", month: 5, year: 2026 },
-    { name: "Julho 2026", month: 6, year: 2026 },
-    { name: "Agosto 2026", month: 7, year: 2026 },
-    { name: "Setembro 2026", month: 8, year: 2026 },
-    { name: "Outubro 2026", month: 9, year: 2026 }
-  ];
-
-  // --- Remove meses passados automaticamente ---
-  monthsAvailable = monthsAvailable.filter(m => {
-    return (
-      m.year > currentYear ||
-      (m.year === currentYear && m.month >= currentMonth)
-    );
-  });
+  // --- Meses disponíveis: do mês atual até 12 meses à frente (atualiza sozinho) ---
+  const nomesMeses = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+    "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+  const monthsAvailable = [];
+  for (let i = 0; i < 12; i++) {
+    const d = new Date(currentYear, currentMonth + i, 1);
+    monthsAvailable.push({
+      name: `${nomesMeses[d.getMonth()]} ${d.getFullYear()}`,
+      month: d.getMonth(),
+      year: d.getFullYear()
+    });
+  }
 
   const monthSelect = document.createElement('select');
   monthsAvailable.forEach(opt => {
@@ -492,6 +673,22 @@ function formatarTelefone(tel) {
 }
 
 async function sendToWhatsAppAndFirestore() {
+  const cfg = pagamentoConfig;
+  const prazoDate = reserva ? new Date(Date.now() + cfg.prazoHoras * 3600 * 1000) : null;
+  if (reserva) reserva.prazo = prazoDate.toISOString();
+
+  let blocoReserva = "";
+  if (reserva) {
+    blocoReserva =
+      `\n💰 Total dos serviços: ${formatarReais(reserva.total)}\n` +
+      `🔒 Taxa de reserva (${reserva.percentual}%): ${formatarReais(reserva.sinal)}\n` +
+      `💳 Forma de pagamento da reserva: ${reserva.forma}\n` +
+      (reserva.forma === "PIX" && cfg.chavePix ? `🔑 Chave Pix: ${cfg.chavePix}\n` : "") +
+      `⏳ Prazo para pagamento: até ${formatarPrazo(prazoDate)}\n` +
+      `📎 Vou enviar o comprovante por aqui.\n` +
+      `✅ Li e concordo com as regras: reserva não reembolsável, cancelamento com no mínimo 7 dias úteis, reagendamento com no mínimo 20 minutos e tolerância de atraso de 20 minutos.\n`;
+  }
+
   const mensagem =
     `Oi Ana! 💕 Tudo bem?\n` +
     `Acabei de fazer meu agendamento pelo autoatendimento do site e ficaria super feliz em confirmar com você! ✨\n\n` +
@@ -504,14 +701,15 @@ async function sendToWhatsAppAndFirestore() {
     `🕒 Período: ${answers["Qual período prefere? (Manhã, Tarde, Noite)"]}\n` +
     `⏰ Horário: ${answers["Escolha o horário"]}\n` +
     `💄 Procedimentos desejados: ${answers["Quais procedimentos deseja?"]}\n` +
-    `💳 Forma de pagamento: ${answers[questions[7]]}\n\n` +
-    `Fico no aguardo da sua confirmação. Obrigado pelo carinho e atenção! ✨🥰`;
+    (reserva ? "" : `💳 Forma de pagamento: ${answers[questions[7]]}\n`) +
+    blocoReserva +
+    `\nFico no aguardo da sua confirmação. Obrigado pelo carinho e atenção! ✨🥰`;
 
   const telefone = "554699401775";
   window.open(`https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`, '_blank');
 
   try {
-    await addDoc(collection(db, "agendamentos"), {
+    const dados = {
       nome: answers[questions[0]],
       telefone: formatarTelefone(answers[questions[1]]),
       instagram: answers[questions[2]],
@@ -521,10 +719,35 @@ async function sendToWhatsAppAndFirestore() {
       horario: answers["Escolha o horário"],
       procedimento: answers["Quais procedimentos deseja?"],
       formaPagamento: answers["Qual a forma de pagamento? (PIX, Dinheiro, Cartão de Crédito, Cartão de Débito)"],
-      valor: calcularValor(answers["Quais procedimentos deseja?"]) || 0
-    });
+      valor: calcularValor(answers["Quais procedimentos deseja?"]) || 0,
+      criadoEm: new Date().toISOString()
+    };
+
+    if (reserva) {
+      Object.assign(dados, {
+        sinalPercentual: reserva.percentual,
+        sinalValor: reserva.sinal,
+        sinalForma: reserva.forma,
+        sinalStatus: "aguardando",
+        sinalPrazo: reserva.prazo,
+        aceitouRegras: true
+      });
+    }
+
+    await addDoc(collection(db, "agendamentos"), dados);
 
     console.log("✅ Agendamento salvo no Firestore!");
+
+    // Registra também na coleção pública "horariosOcupados" (sem dados pessoais),
+    // usada pelo próprio chat para saber quais horários já não estão mais livres.
+    try {
+      await addDoc(collection(db, "horariosOcupados"), {
+        data: answers["Escolha a data:"],
+        horario: answers["Escolha o horário"]
+      });
+    } catch (e2) {
+      console.error("❌ Erro ao registrar horário ocupado:", e2);
+    }
 
   } catch (e) {
     console.error("❌ Erro ao salvar no Firestore:", e);

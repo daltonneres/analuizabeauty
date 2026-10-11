@@ -53,6 +53,8 @@
       <button id="btnNovoAtendimento" class="btnPrimario" aria-label="Adicionar novo atendimento">➕ Novo Atendimento</button>
       <button id="btnFiltros" class="btnSecundario" aria-label="Abrir filtros de mês e dia">🔍 Filtros</button>
       <button id="btnDisponibilidade" class="btnSecundario" aria-label="Editar disponibilidade de dias e horários">📅 Disponibilidade</button>
+      <button id="btnPagamentos" class="btnSecundario" aria-label="Configurar chave Pix e taxa de reserva">💳 Pagamentos</button>
+      <button id="btnSinais" class="btnSecundario" aria-label="Conferir pagamentos das taxas de reserva">💰 Sinais</button>
       <button id="btnExportar" class="btnSecundario" aria-label="Exportar agendamentos em PDF">📄 Exportar PDF</button>
       <button id="btnApagarMes" class="btnPerigo" aria-label="Apagar agendamentos do mês">🗑️ Apagar mês</button>
       <button id="btnNovaDespesa" class="btnPerigo" aria-label="Adicionar nova despesa">💸 Nova Despesa</button>
@@ -77,6 +79,7 @@
       <th>Valor (R$)</th>
       <th>Desconto?</th>
       <th>Valor Final (R$)</th>
+      <th>Sinal</th>
       <th>Concluído</th>
       <th>Ações</th>
     </tr>
@@ -257,6 +260,48 @@
         <button id="btnBloquearHorario" class="btnPerigo">🚫 Bloquear horário</button>
       </div>
       <ul id="listaHorariosBloqueados" class="disp-lista-bloqueios"></ul>
+    </div>
+  </div>
+
+  <!-- Modal Pagamentos (chave Pix e regras da taxa de reserva) -->
+  <div id="modalPagamentos" class="modal">
+    <div class="modal-content">
+      <span class="close" id="fecharPagamentos">&times;</span>
+      <h2>💳 Pagamentos</h2>
+      <p class="pag-aviso">Estes dados aparecem para as clientes no chat do site, na hora de pagar a taxa de reserva.</p>
+
+      <label>Tipo da chave Pix:</label>
+      <select id="tipoChavePix">
+        <option>CPF</option>
+        <option>CNPJ</option>
+        <option>Celular</option>
+        <option>E-mail</option>
+        <option>Chave aleatória</option>
+      </select>
+
+      <label>Chave Pix:</label>
+      <input type="text" id="chavePix" placeholder="Digite a chave exatamente como deve ser copiada" autocomplete="off" />
+
+      <label>Nome do titular (opcional):</label>
+      <input type="text" id="titularPix" placeholder="Ex: Ana Luiza Fernandes" />
+
+      <label>Taxa de reserva (% do valor dos serviços):</label>
+      <input type="number" id="percentualSinal" min="1" max="100" value="50" />
+
+      <label>Prazo para pagar e enviar o comprovante (horas):</label>
+      <input type="number" id="prazoHoras" min="1" max="72" value="12" />
+
+      <button id="salvarPagamentos" class="btnPrimario">💾 Salvar Pagamentos</button>
+    </div>
+  </div>
+
+  <!-- Modal Sinais (conferir quem já pagou a taxa de reserva) -->
+  <div id="modalSinais" class="modal">
+    <div class="modal-content modal-sinais">
+      <span class="close" id="fecharSinais">&times;</span>
+      <h2>💰 Taxa de reserva</h2>
+      <p class="pag-aviso">Clientes que agendaram com a taxa de reserva. Confirme quando o pagamento for recebido — a cliente é avisada pelo WhatsApp.</p>
+      <div id="listaSinais" class="sinal-lista"></div>
     </div>
   </div>
 
@@ -966,6 +1011,34 @@ table {
   text-decoration: underline;
   color: var(--dourado-dk);
 }
+
+/* --- Pagamentos / Taxa de reserva --- */
+.pag-aviso { font-size: .85rem; color: var(--text-soft); margin: 0 0 4px; }
+.modal-sinais { max-width: 560px; }
+.sinal-lista { display: flex; flex-direction: column; gap: 12px; margin-top: 6px; }
+.sinal-card {
+  border: 1px solid rgba(212,175,55,.4);
+  border-radius: 12px;
+  padding: 14px 16px;
+  background: var(--off-white);
+}
+.sinal-card.pago { border-color: rgba(85,107,47,.5); background: #f4f8ec; }
+.sinal-card.expirado { border-color: rgba(192,88,79,.55); background: #fdf1ef; }
+.sinal-topo { display: flex; justify-content: space-between; align-items: flex-start; gap: 8px; flex-wrap: wrap; }
+.sinal-nome { font-weight: 600; color: var(--verde); }
+.sinal-info { font-size: .85rem; color: var(--text-soft); margin: 6px 0 10px; line-height: 1.55; }
+.sinal-status {
+  font-size: .78rem; font-weight: 600; padding: 3px 10px; border-radius: 50px;
+  background: var(--rosa); color: var(--verde); white-space: nowrap;
+}
+.sinal-status.pago { background: var(--verde); color: #fff; }
+.sinal-status.expirado { background: #c0584f; color: #fff; }
+.sinal-acoes { display: flex; gap: 8px; flex-wrap: wrap; }
+.sinal-acoes button { padding: 8px 14px; font-size: .8rem; }
+.sinal-vazio { text-align: center; color: var(--text-soft); padding: 16px 0; }
+.badge-sinal { font-size: .78rem; font-weight: 600; white-space: nowrap; }
+.badge-sinal.pago { color: var(--verde); }
+.badge-sinal.expirado { color: #c0584f; }
 </style>
 
 <!-- Modal Esqueci Senha -->
@@ -999,6 +1072,7 @@ table {
     <div class="acoes-botoes">
       <button id="acaoEditar" class="btnPrimario">✏️ Editar Atendimento</button>
       <button id="acaoWhats" class="btnSecundario">💬 Confirmar no WhatsApp</button>
+      <button id="acaoAtraso" class="btnSecundario">⏰ Avisar atraso (20 min)</button>
       <button id="acaoExcluir" class="btnPerigo">🗑️ Excluir Atendimento</button>
       <button id="acaoFechar" class="btnFechar">❌ Fechar</button>
     </div>
