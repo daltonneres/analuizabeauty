@@ -1,432 +1,88 @@
 <!DOCTYPE html>
 <html lang="pt-BR">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0">
-  <title>Política de Privacidade — Ana Luiza Fernandes Makeup</title>
-  <link rel="icon" href="favicon.png" type="image/png" />
-  <link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:ital,wght@0,300;0,400;0,600;1,300;1,400&family=Jost:wght@300;400;500;600&display=swap" rel="stylesheet">
-  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
-  <style>
-    :root {
-      --rosa:       #f8d7da;
-      --rosa-med:   #f8c1c7;
-      --dourado:    #d4af37;
-      --dourado-dk: #b8952b;
-      --verde:      #556b2f;
-      --verde-lt:   #6a8538;
-      --off-white:  #fdf8f8;
-      --text:       #333;
-      --text-soft:  #666;
-      --font-display: 'Cormorant Garamond', Georgia, serif;
-      --font-body:    'Jost', Arial, sans-serif;
-      --font-script:  'Great Vibes', cursive;
-      --shadow-sm:  0 2px 8px rgba(0,0,0,.08);
-      --shadow-md:  0 6px 20px rgba(0,0,0,.12);
-      --radius:     14px;
-      --transition: 0.28s ease;
-    }
-
-    *, *::before, *::after { box-sizing: border-box; }
-    html { scroll-behavior: smooth; }
-
-    body {
-      font-family: var(--font-body);
-      margin: 0; padding: 0;
-      background-color: var(--rosa);
-      color: var(--text);
-      line-height: 1.65;
-    }
-
-    /* ── Header ── */
-    header {
-      background: var(--rosa);
-      border-bottom: 2px solid var(--dourado);
-      padding: 18px 20px;
-      text-align: center;
-      position: sticky; top: 0; z-index: 100;
-      box-shadow: var(--shadow-sm);
-    }
-
-    .header-inner {
-      max-width: 900px;
-      margin: 0 auto;
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      gap: 16px;
-    }
-
-    .header-logo {
-      font-family: var(--font-script);
-      font-size: 1.7rem;
-      color: var(--verde);
-      white-space: nowrap;
-    }
-
-    header h1 {
-      font-family: var(--font-display);
-      font-size: clamp(1.2rem, 3vw, 1.6rem);
-      color: var(--verde);
-      margin: 0;
-      font-weight: 600;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-
-    .btn-voltar-topo {
-      display: inline-flex;
-      align-items: center;
-      gap: 7px;
-      background: var(--verde);
-      color: white;
-      padding: 8px 18px;
-      border-radius: 50px;
-      text-decoration: none;
-      font-size: .85rem;
-      font-weight: 600;
-      white-space: nowrap;
-      transition: background var(--transition), transform var(--transition);
-    }
-    .btn-voltar-topo:hover {
-      background: var(--dourado);
-      color: #333;
-      transform: translateY(-2px);
-    }
-
-    /* ── Hero banner ── */
-    .hero-banner {
-      background: linear-gradient(135deg, var(--verde) 0%, var(--verde-lt) 100%);
-      color: white;
-      text-align: center;
-      padding: 52px 20px;
-    }
-    .hero-banner i {
-      font-size: 2.4rem;
-      margin-bottom: 14px;
-      opacity: .9;
-      display: block;
-    }
-    .hero-banner h2 {
-      font-family: var(--font-script);
-      font-size: clamp(2rem, 6vw, 3rem);
-      margin: 0 0 10px;
-      font-weight: 400;
-    }
-    .hero-banner p {
-      font-size: .97rem;
-      opacity: .85;
-      max-width: 540px;
-      margin: 0 auto;
-      font-weight: 300;
-    }
-
-    /* ── Container ── */
-    .container {
-      max-width: 900px;
-      margin: 0 auto;
-      padding: 48px 20px;
-    }
-
-    /* ── Intro card ── */
-    .intro-card {
-      background: white;
-      border: 1px solid rgba(212,175,55,.35);
-      border-left: 4px solid var(--dourado);
-      border-radius: var(--radius);
-      padding: 24px 28px;
-      margin-bottom: 40px;
-      box-shadow: var(--shadow-sm);
-      font-size: .97rem;
-      color: var(--text-soft);
-    }
-    .intro-card strong { color: var(--verde); }
-
-    /* ── Section title ── */
-    .section-title {
-      font-family: var(--font-display);
-      font-size: 1.35rem;
-      font-weight: 600;
-      color: var(--verde);
-      margin: 40px 0 16px;
-      display: flex;
-      align-items: center;
-      gap: 10px;
-    }
-    .section-title::after {
-      content: '';
-      flex: 1;
-      height: 1px;
-      background: rgba(212,175,55,.4);
-    }
-
-    /* ── Accordion ── */
-    .accordion {
-      border: 1px solid rgba(212,175,55,.4);
-      border-radius: var(--radius);
-      margin: 12px 0;
-      overflow: hidden;
-      box-shadow: var(--shadow-sm);
-      background: white;
-      transition: box-shadow var(--transition);
-    }
-    .accordion:hover { box-shadow: var(--shadow-md); }
-
-    .accordion-header {
-      background: var(--off-white);
-      cursor: pointer;
-      padding: 16px 22px;
-      font-weight: 600;
-      font-size: .97rem;
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      gap: 12px;
-      color: var(--verde);
-      transition: background var(--transition);
-      user-select: none;
-    }
-    .accordion-header:hover { background: var(--rosa-med); }
-    .accordion-header.open { background: var(--rosa); }
-
-    .acc-left { display: flex; align-items: center; gap: 12px; }
-    .acc-icon { font-size: 1.1rem; width: 28px; text-align: center; }
-
-    .acc-arrow {
-      font-size: .75rem;
-      color: var(--dourado);
-      transition: transform var(--transition);
-      flex-shrink: 0;
-    }
-    .accordion-header.open .acc-arrow { transform: rotate(180deg); }
-
-    .accordion-content {
-      max-height: 0;
-      overflow: hidden;
-      transition: max-height .4s ease, padding .3s ease;
-      padding: 0 22px;
-      background: white;
-      color: var(--text-soft);
-      font-size: .94rem;
-    }
-    .accordion-content p,
-    .accordion-content ul { margin: 16px 0; }
-    .accordion-content ul { padding-left: 20px; }
-    .accordion-content ul li { margin-bottom: 8px; }
-    .accordion-content a { color: var(--verde); font-weight: 600; text-decoration: none; }
-    .accordion-content a:hover { color: var(--dourado-dk); text-decoration: underline; }
-
-    /* ── Info chips ── */
-    .chips {
-      display: flex;
-      flex-wrap: wrap;
-      gap: 10px;
-      margin: 14px 0;
-    }
-    .chip {
-      background: var(--rosa);
-      border: 1px solid rgba(212,175,55,.4);
-      border-radius: 50px;
-      padding: 6px 16px;
-      font-size: .87rem;
-      color: var(--verde);
-      font-weight: 500;
-    }
-
-    /* ── Footer ── */
-    .page-footer {
-      background: linear-gradient(180deg, var(--rosa) 0%, var(--rosa-med) 100%);
-      border-top: 2px solid rgba(212,175,55,.4);
-      padding: 30px 20px;
-      text-align: center;
-    }
-    .footer-meta {
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      flex-wrap: wrap;
-      gap: 16px;
-      margin-bottom: 16px;
-      font-size: .87rem;
-      color: var(--text-soft);
-    }
-    .footer-meta .badge {
-      background: var(--dourado);
-      color: #333;
-      padding: 4px 14px;
-      border-radius: 50px;
-      font-weight: 600;
-      font-size: .82rem;
-    }
-    .footer-copy {
-      font-size: .82rem;
-      color: var(--text-soft);
-    }
-
-    /* ── Responsivo ── */
-    @media (max-width: 600px) {
-      .header-logo { display: none; }
-      .hero-banner { padding: 40px 16px; }
-    }
-  </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Política de Privacidade — Ana Luiza Fernandes Makeup</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:wght@400;600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="paginas.css">
 </head>
 <body>
+<header class="topo"><div class="wrap">
+  <a class="logo" href="index.html">Ana Luiza</a>
+  <nav class="menu" aria-label="Páginas">
+    <a href="index.html">Início</a>
+    <a href="cancelamento.html">Cancelamento</a>
+    <a href="privacidade.html" aria-current="page">Privacidade</a>
+    <a href="contato.html">Contato</a>
+  </nav>
+</div></header>
 
-  <!-- Header -->
-  <header>
-    <div class="header-inner">
-      <span class="header-logo">Ana Luiza</span>
-      <h1><i class="fa-solid fa-shield-halved"></i> Política de Privacidade</h1>
-      <a href="index.html" class="btn-voltar-topo">
-        <i class="fa-solid fa-arrow-left"></i> Voltar
-      </a>
-    </div>
-  </header>
-
-  <!-- Hero -->
-  <div class="hero-banner">
-    <i class="fa-solid fa-lock"></i>
-    <h2>Seus dados, protegidos</h2>
-    <p>Transparência e segurança em cada etapa do nosso atendimento, em conformidade com a LGPD.</p>
+<main class="wrap">
+  <div class="abertura">
+    <h1>Seus dados, protegidos</h1>
+    <p>Aqui explicamos, em linguagem simples, como usamos fotos, depoimentos e informações coletadas no atendimento, conforme a Lei Geral de Proteção de Dados (Lei nº 13.709/2018).</p>
   </div>
 
-  <div class="container">
+  <div class="duas">
+    <aside class="lado">
+      <h2>Quer exercer um direito?</h2>
+      <p>Um toque abre o WhatsApp da Ana com a mensagem já escrita.</p>
+      <a class="btn" href="https://wa.me/5546999401775?text=Ol%C3%A1%2C%20Ana!%20Quero%20pedir%20a%20exclus%C3%A3o%20das%20minhas%20imagens%20ou%20depoimento." target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Pedir exclusão</a>
+      <a class="btn contorno" href="https://wa.me/5546999401775?text=Ol%C3%A1%2C%20Ana!%20Quero%20revisar%20os%20dados%20que%20voc%C3%AA%20guarda%20sobre%20mim." target="_blank" rel="noopener"><i class="fa-solid fa-magnifying-glass"></i> Revisar meus dados</a>
+      <a class="btn contorno" href="https://wa.me/5546999401775?text=Ol%C3%A1%2C%20Ana!%20Quero%20retirar%20meu%20consentimento%20de%20uso%20de%20imagens%20e%20depoimentos." target="_blank" rel="noopener"><i class="fa-solid fa-hand"></i> Retirar consentimento</a>
+    </aside>
 
-    <!-- Intro -->
-    <div class="intro-card">
-      Na <strong>Ana Luiza Fernandes Makeup</strong>, prezamos pela <strong>privacidade e segurança</strong> das nossas clientes. Esta página explica como utilizamos fotos, depoimentos e informações pessoais coletadas durante nossos atendimentos e serviços, em conformidade com a <strong>Lei Geral de Proteção de Dados (Lei nº 13.709/2018)</strong>.
-    </div>
-
-    <p class="section-title"><i class="fa-solid fa-list-check"></i> Saiba mais</p>
-
-    <!-- Acordeões -->
-    <div class="accordion">
-      <div class="accordion-header">
-        <span class="acc-left">
-          <span class="acc-icon">📥</span> Coleta de informações
-        </span>
-        <i class="fa-solid fa-chevron-down acc-arrow"></i>
-      </div>
-      <div class="accordion-content">
-        <p>Coletamos dados pessoais para fins de atendimento e divulgação dos nossos serviços:</p>
-        <div class="chips">
-          <span class="chip">👤 Nome</span>
-          <span class="chip">📱 Telefone</span>
-          <span class="chip">📧 E-mail</span>
-          <span class="chip">📸 Imagens</span>
-          <span class="chip">💬 Depoimentos</span>
-        </div>
-      </div>
-    </div>
-
-    <div class="accordion">
-      <div class="accordion-header">
-        <span class="acc-left">
-          <span class="acc-icon">📌</span> Uso das informações
-        </span>
-        <i class="fa-solid fa-chevron-down acc-arrow"></i>
-      </div>
-      <div class="accordion-content">
-        <ul>
-          <li>Divulgação de serviços em redes sociais e site oficial;</li>
-          <li>Registro de feedbacks e depoimentos;</li>
-          <li>Melhoria contínua da experiência da cliente.</li>
+    <article class="folha">
+      <section>
+        <h2>O que coletamos</h2>
+        <p>Coletamos estes dados para atender você e divulgar nossos serviços:</p>
+        <ul class="chips">
+          <li>Nome</li><li>Telefone</li><li>E-mail</li><li>Imagens</li><li>Depoimentos</li>
         </ul>
-      </div>
-    </div>
-
-    <div class="accordion">
-      <div class="accordion-header">
-        <span class="acc-left">
-          <span class="acc-icon">✅</span> Consentimento
-        </span>
-        <i class="fa-solid fa-chevron-down acc-arrow"></i>
-      </div>
-      <div class="accordion-content">
-        <p>Ao autorizar a captura de fotos ou fornecer depoimentos, você concorda com o uso de suas informações para os fins descritos acima. Este consentimento pode ser <strong>revogado a qualquer momento</strong> entrando em contato conosco.</p>
-      </div>
-    </div>
-
-    <div class="accordion">
-      <div class="accordion-header">
-        <span class="acc-left">
-          <span class="acc-icon">💎</span> Direitos das clientes
-        </span>
-        <i class="fa-solid fa-chevron-down acc-arrow"></i>
-      </div>
-      <div class="accordion-content">
+      </section>
+      <section>
+        <h2>Para que usamos</h2>
         <ul>
-          <li>Solicitar a <strong>exclusão</strong> de suas imagens ou depoimentos;</li>
-          <li>Revisar os dados que armazenamos sobre você;</li>
-          <li>Revogar o consentimento a qualquer momento.</li>
+          <li>Divulgar os serviços nas redes sociais e no site oficial;</li>
+          <li>Registrar feedbacks e depoimentos;</li>
+          <li>Melhorar a experiência de cada cliente.</li>
         </ul>
-      </div>
-    </div>
-
-    <div class="accordion">
-      <div class="accordion-header">
-        <span class="acc-left">
-          <span class="acc-icon">🔒</span> Segurança
-        </span>
-        <i class="fa-solid fa-chevron-down acc-arrow"></i>
-      </div>
-      <div class="accordion-content">
-        <p>Garantimos que todas as informações coletadas são armazenadas de forma segura e utilizadas de maneira ética e responsável, sem compartilhamento com terceiros.</p>
-      </div>
-    </div>
-
-    <div class="accordion">
-      <div class="accordion-header">
-        <span class="acc-left">
-          <span class="acc-icon">📞</span> Contato
-        </span>
-        <i class="fa-solid fa-chevron-down acc-arrow"></i>
-      </div>
-      <div class="accordion-content">
+      </section>
+      <section>
+        <h2>Seu consentimento</h2>
+        <p>Ao autorizar fotos ou dar um depoimento, você concorda com o uso das informações para os fins acima. Você pode retirar esse consentimento a qualquer momento, falando com a gente.</p>
+      </section>
+      <section>
+        <h2>Seus direitos</h2>
         <ul>
-          <li><i class="fa-brands fa-whatsapp" style="color:#25D366"></i> WhatsApp: <a href="https://wa.me/+554699401775">46 9940-1775</a></li>
-          <li><i class="fa-solid fa-envelope" style="color:var(--dourado)"></i> E-mail: <a href="mailto:anafernandesmakeup01@gmail.com">anafernandesmakeup01@gmail.com</a></li>
+          <li>Pedir a exclusão das suas imagens ou depoimentos;</li>
+          <li>Revisar os dados que guardamos sobre você;</li>
+          <li>Retirar o consentimento quando quiser.</li>
         </ul>
-      </div>
-    </div>
-
+      </section>
+      <section>
+        <h2>Como protegemos</h2>
+        <p>Guardamos as informações com segurança e as usamos de forma ética e responsável, sem compartilhar com terceiros.</p>
+      </section>
+      <section>
+        <h2>Fale com a gente</h2>
+        <p><a href="https://wa.me/5546999401775" target="_blank" rel="noopener">WhatsApp (46) 99940-1775</a></p>
+        <p><a href="mailto:anafernandesmakeup01@gmail.com">anafernandesmakeup01@gmail.com</a></p>
+      </section>
+    </article>
   </div>
+</main>
 
-  <!-- Footer -->
-  <div class="page-footer">
-    <div class="footer-meta">
-      <span><i class="fa-regular fa-calendar"></i> Última atualização: Junho 2026</span>
-      <span class="badge">LGPD Conforme</span>
-      <a href="index.html" class="btn-voltar-topo" style="font-size:.85rem">
-        <i class="fa-solid fa-house"></i> Voltar ao Início
-      </a>
-    </div>
-    <p class="footer-copy">&copy; 2026 Ana Luiza Fernandes Makeup. Todos os direitos reservados.</p>
-  </div>
-
-  <script>
-    const accordions = document.querySelectorAll('.accordion');
-    accordions.forEach(acc => {
-      acc.querySelector('.accordion-header').addEventListener('click', () => {
-        const content = acc.querySelector('.accordion-content');
-        const header  = acc.querySelector('.accordion-header');
-        const isOpen  = content.style.maxHeight;
-
-        // Fecha todos
-        accordions.forEach(a => {
-          a.querySelector('.accordion-content').style.maxHeight = null;
-          a.querySelector('.accordion-header').classList.remove('open');
-        });
-
-        // Abre o clicado (se estava fechado)
-        if (!isOpen) {
-          content.style.maxHeight = content.scrollHeight + 'px';
-          header.classList.add('open');
-        }
-      });
-    });
-  </script>
-
+<footer class="rodape"><div class="wrap">
+  <nav aria-label="Rodapé">
+    <a href="index.html">Início</a>
+    <a href="cancelamento.html">Política de Cancelamento</a>
+    <a href="contato.html">Fale conosco</a>
+  </nav>
+  <p>Última atualização: junho de 2026. &copy; 2026 Ana Luiza Fernandes Makeup. Todos os direitos reservados.</p>
+</div></footer>
 </body>
 </html>

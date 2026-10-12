@@ -132,6 +132,26 @@ window.addEventListener("resize", () => {
 });
 
 // --- Criar filtros de mês e dia --- //
+// Meses do filtro: por padrão, do mês atual até 12 meses à frente.
+// Os meses anteriores só aparecem se a opção "Mostrar meses anteriores" for marcada.
+const nomesMesesFiltro = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
+  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
+let mostrarMesesAnteriores = false;
+
+function mesesFiltro() {
+  const lista = [];
+  const hoje = new Date();
+  const inicio = mostrarMesesAnteriores ? new Date(2025, 10, 1) : new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 12, 1);
+  for (let d = inicio; d <= fim; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+    lista.push({
+      nome: `${nomesMesesFiltro[d.getMonth()]} ${d.getFullYear()}`,
+      mes: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+    });
+  }
+  return lista;
+}
+
 function criarFiltros() {
   if (document.getElementById("filtrosContainer")) return;
   const filtrosContainer = document.createElement("div");
@@ -148,27 +168,19 @@ function criarFiltros() {
   selectMes.style.padding = "6px";
   selectMes.style.borderRadius = "6px";
 
-// Meses do filtro: de Novembro/2025 até 12 meses à frente (atualiza sozinho)
-const nomesMesesFiltro = ["Janeiro", "Fevereiro", "Março", "Abril", "Maio", "Junho",
-  "Julho", "Agosto", "Setembro", "Outubro", "Novembro", "Dezembro"];
-const meses = [];
-{
-  const hoje = new Date();
-  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 12, 1);
-  for (let d = new Date(2025, 10, 1); d <= fim; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
-    meses.push({
-      nome: `${nomesMesesFiltro[d.getMonth()]} ${d.getFullYear()}`,
-      mes: `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`
+  const popularMesesFiltro = () => {
+    const anterior = selectMes.value;
+    selectMes.innerHTML = "";
+    mesesFiltro().forEach(m => {
+      const opt = document.createElement("option");
+      opt.value = m.mes;
+      opt.textContent = m.nome;
+      selectMes.appendChild(opt);
     });
-  }
-}
-
-  meses.forEach(m => {
-    const opt = document.createElement("option");
-    opt.value = m.mes;
-    opt.textContent = m.nome;
-    selectMes.appendChild(opt);
-  });
+    if ([...selectMes.options].some(o => o.value === anterior)) selectMes.value = anterior;
+    else selectMes.value = mesAtualYM();
+  };
+  popularMesesFiltro();
 
   const inputDia = document.createElement("input");
   inputDia.type = "date";
@@ -186,7 +198,7 @@ const meses = [];
   };
 
   const btnTodosMeses = document.createElement("button");
-  btnTodosMeses.textContent = "📅 Todos os Meses";
+  btnTodosMeses.textContent = "📅 Mês atual em diante";
   btnTodosMeses.className = "btnSecundario";
   btnTodosMeses.onclick = () => {
     filtroMesAtual = "todos";
@@ -195,7 +207,20 @@ const meses = [];
     carregarDespesas();
   };
 
-  filtrosContainer.append(selectMes, inputDia, btnFiltrar, btnTodosMeses);
+  const lblAnteriores = document.createElement("label");
+  lblAnteriores.style.cssText = "display:flex;align-items:center;gap:6px;font-size:.85rem;color:var(--text-soft);cursor:pointer";
+  const chkAnteriores = document.createElement("input");
+  chkAnteriores.type = "checkbox";
+  chkAnteriores.id = "chkMesesAnteriores";
+  chkAnteriores.onchange = () => {
+    mostrarMesesAnteriores = chkAnteriores.checked;
+    popularMesesFiltro();
+    carregarAgendamentos();
+    carregarDespesas();
+  };
+  lblAnteriores.append(chkAnteriores, " Mostrar meses anteriores");
+
+  filtrosContainer.append(selectMes, inputDia, btnFiltrar, btnTodosMeses, lblAnteriores);
   adminContainer.insertBefore(filtrosContainer, adminContainer.querySelector(".panel-title"));
 
   // Botão "🔍 Filtros" no cabeçalho abre/fecha o painel de filtros
@@ -874,10 +899,12 @@ function nomeMesYM(ym) {
   return `${NOMES_MESES[m - 1]} ${y}`;
 }
 
-function listarMesesYM() {
+function listarMesesYM(incluirAnteriores) {
   const lista = [];
-  const fim = new Date(new Date().getFullYear(), new Date().getMonth() + 12, 1);
-  for (let d = new Date(2025, 10, 1); d <= fim; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
+  const hoje = new Date();
+  const inicio = incluirAnteriores ? new Date(2025, 10, 1) : new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+  const fim = new Date(hoje.getFullYear(), hoje.getMonth() + 12, 1);
+  for (let d = inicio; d <= fim; d = new Date(d.getFullYear(), d.getMonth() + 1, 1)) {
     lista.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`);
   }
   return lista;
@@ -1118,16 +1145,22 @@ async function atualizarBotaoMeta(ags) {
   btnMeta.textContent = c.meta ? `🎯 Meta (${c.pct.toFixed(0)}%)` : "🎯 Meta";
 }
 
+function popularMesesMeta(incluirAnteriores) {
+  const anterior = selectMesMeta.value;
+  selectMesMeta.innerHTML = "";
+  listarMesesYM(incluirAnteriores).forEach((ym) => {
+    const opt = document.createElement("option");
+    opt.value = ym;
+    opt.textContent = nomeMesYM(ym);
+    selectMesMeta.appendChild(opt);
+  });
+  selectMesMeta.value = [...selectMesMeta.options].some((o) => o.value === anterior) ? anterior : mesAtualYM();
+}
+
 async function abrirModalMeta() {
   modalMeta.style.display = "flex";
-  if (!selectMesMeta.options.length) {
-    listarMesesYM().forEach((ym) => {
-      const opt = document.createElement("option");
-      opt.value = ym;
-      opt.textContent = nomeMesYM(ym);
-      selectMesMeta.appendChild(opt);
-    });
-  }
+  document.getElementById("metaMostrarAnteriores").checked = false;
+  popularMesesMeta(false);
   selectMesMeta.value = mesAtualYM();
   document.getElementById("metaConteudo").innerHTML = `<p class="sinal-vazio">Carregando...</p>`;
   try {
@@ -1163,6 +1196,10 @@ async function salvarMeta(tipo) {
 if (btnMeta) {
   btnMeta.addEventListener("click", abrirModalMeta);
   selectMesMeta.addEventListener("change", () => renderMeta(selectMesMeta.value));
+  document.getElementById("metaMostrarAnteriores").addEventListener("change", (e) => {
+    popularMesesMeta(e.target.checked);
+    renderMeta(selectMesMeta.value);
+  });
   document.getElementById("salvarMetaMes").addEventListener("click", () => salvarMeta("mes"));
   document.getElementById("salvarMetaPadrao").addEventListener("click", () => salvarMeta("padrao"));
   document.getElementById("usarMetaPadrao").addEventListener("click", async () => {
@@ -1427,6 +1464,7 @@ agendamentos.sort((a, b) => {
   agendamentos.forEach((ag) => {
     const dataBase = ag.data.slice(0, 7);
     if (filtroMes !== "todos" && dataBase !== filtroMes) return;
+    if (filtroMes === "todos" && !filtroDia && !mostrarMesesAnteriores && dataBase < mesAtualYM()) return;
     if (filtroDia && ag.data !== filtroDia) return;
 
     const valor = Number(ag.valor || 0);
@@ -1516,6 +1554,7 @@ async function carregarDespesas() {
   despesas.forEach((d) => {
     const dataBase = d.data.slice(0, 7);
     if (filtroMes !== "todos" && dataBase !== filtroMes) return;
+    if (filtroMes === "todos" && !filtroDia && !mostrarMesesAnteriores && dataBase < mesAtualYM()) return;
     if (filtroDia && d.data !== filtroDia) return;
 
     const valor = Number(d.valor || 0);
@@ -1907,7 +1946,7 @@ let pdfExportado = false;
 
 btnExportar.onclick = async () => {
   const mes = filtroMesAtual;
-  if (mes === "todos") return alert("Selecione um mês específico (o filtro está em 'Todos os Meses').");
+  if (mes === "todos") return alert("Selecione um mês específico (o filtro está em 'Mês atual em diante').");
   pdfExportado = await exportarPDF(mes);
 };
 
@@ -1918,7 +1957,7 @@ btnApagarMes.onclick = async () => {
   }
 
   const mes = filtroMesAtual;
-  if (mes === "todos") return alert("Selecione um mês específico (o filtro está em 'Todos os Meses').");
+  if (mes === "todos") return alert("Selecione um mês específico (o filtro está em 'Mês atual em diante').");
   if (!confirm(`Tem certeza que deseja apagar os dados de ${mes}?`)) return;
 
   await apagarPorMes(mes);
