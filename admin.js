@@ -14,7 +14,8 @@ import {
   where,
   arrayUnion,
   arrayRemove,
-  deleteField
+  deleteField,
+  writeBatch
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
 import {
   getAuth,
@@ -22,6 +23,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
+import { CATALOGO_PADRAO, criarIdCatalogo, formatarTempoMedio, tempoMedioConfigurado, calcularTempoMedio } from "./catalogo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAlZAZjT8ZOWPf40Tf4lowdXcWxO179e1I",
@@ -45,6 +47,24 @@ const btnLogin = document.getElementById("btnLogin");
 const erroLogin = document.getElementById("erroLogin");
 const btnLogout = document.getElementById("btnLogout");
 const tabelaAgendamentos = document.getElementById("tabelaAgendamentos");
+const btnOcultarValores = document.getElementById("btnOcultarValores");
+const tabelaAgenda = document.querySelector('table[aria-label="Tabela de agendamentos"]');
+btnOcultarValores?.addEventListener("click", () => {
+  const ocultos = tabelaAgenda?.classList.toggle("valores-ocultos") ?? false;
+  btnOcultarValores.setAttribute("aria-pressed", String(ocultos));
+  btnOcultarValores.setAttribute("aria-label", `${ocultos ? "Mostrar" : "Ocultar"} valores dos agendamentos`);
+  btnOcultarValores.title = `${ocultos ? "Mostrar" : "Ocultar"} valores`;
+  btnOcultarValores.innerHTML = `<i class="fa-regular ${ocultos ? "fa-eye-slash" : "fa-eye"}" aria-hidden="true"></i>`;
+});
+const btnOcultarValoresFinanceiro = document.getElementById("btnOcultarValoresFinanceiro");
+const painelFinanceiro = document.getElementById("financeiroPanel");
+btnOcultarValoresFinanceiro?.addEventListener("click", () => {
+  const ocultos = painelFinanceiro?.classList.toggle("valores-ocultos") ?? false;
+  btnOcultarValoresFinanceiro.setAttribute("aria-pressed", String(ocultos));
+  btnOcultarValoresFinanceiro.setAttribute("aria-label", `${ocultos ? "Mostrar" : "Ocultar"} valores financeiros`);
+  btnOcultarValoresFinanceiro.title = `${ocultos ? "Mostrar" : "Ocultar"} valores`;
+  btnOcultarValoresFinanceiro.innerHTML = `<i class="fa-regular ${ocultos ? "fa-eye-slash" : "fa-eye"}" aria-hidden="true"></i>`;
+});
 const totalAgendamentos = document.getElementById("totalAgendamentos");
 const valorTotal = document.getElementById("valorTotal");
 const pagamentosResumo = document.getElementById("pagamentosResumo");
@@ -52,9 +72,13 @@ const btnExportar = document.getElementById("btnExportar");
 const btnApagarMes = document.getElementById("btnApagarMes");
 const btnNovoAtendimento = document.getElementById("btnNovoAtendimento");
 
+let catalogoItens = CATALOGO_PADRAO.map((item) => ({ ...item, ativo: true }));
+let catalogoProcedimentos = Object.fromEntries(catalogoItens.map((item) => [item.nome, item.valor]));
+
 // --- Despesas: elementos --- //
 const tabelaDespesas = document.getElementById("tabelaDespesas");
 const valorDespesasEl = document.getElementById("valorDespesas");
+const valorDescontosEl = document.getElementById("valorDescontos");
 const valorLiquidoEl = document.getElementById("valorLiquido");
 const btnNovaDespesa = document.getElementById("btnNovaDespesa");
 const modalDespesa = document.getElementById("modalDespesa");
@@ -63,6 +87,7 @@ const salvarDespesaBtn = document.getElementById("salvarDespesa");
 
 // Totais globais usados para calcular o valor líquido (bruto - despesas)
 let totalBrutoGlobal = 0;
+let totalDescontosGlobal = 0;
 let totalDespesasGlobal = 0;
 
 // Estado do filtro de mês: "todos" por padrão (antes controlado pela opção
@@ -70,10 +95,261 @@ let totalDespesasGlobal = 0;
 let filtroMesAtual = "todos";
 
 function atualizarResumoLiquido() {
-  const liquido = totalBrutoGlobal - totalDespesasGlobal;
+  const liquido = totalBrutoGlobal - totalDescontosGlobal - totalDespesasGlobal;
   if (valorLiquidoEl) {
-    valorLiquidoEl.innerHTML = `<strong>Valor líquido: R$ ${liquido.toFixed(2)}</strong>`;
+    valorLiquidoEl.innerHTML = `<span>Resultado líquido</span><strong>${brl(liquido)}</strong>`;
   }
+}
+
+const modalValoresServicos = document.getElementById("modalValoresServicos");
+const valoresServicosRef = doc(db, "configuracoes", "servicos");
+const listaValoresServicos = document.getElementById("listaValoresServicos");
+const formProdutoCatalogo = document.getElementById("formProdutoCatalogo");
+const catalogoContagem = document.getElementById("catalogoContagem");
+const campoProdutoNome = document.getElementById("produtoNome");
+const campoProdutoTipo = document.getElementById("produtoTipo");
+const campoProdutoValor = document.getElementById("produtoValor");
+const campoProdutoDescricao = document.getElementById("produtoDescricao");
+const campoProdutoTempoMedio = document.getElementById("produtoTempoMedio");
+const avisoTempoCatalogo = document.getElementById("catalogoAvisoTempo");
+const badgeTempoCatalogo = document.getElementById("catalogoPendenciasBadge");
+
+function itensSemTempoMedio() {
+  return catalogoItens.filter((item) => !tempoMedioConfigurado(item));
+}
+
+function atualizarPendenciasTempoMedio() {
+  const pendentes = itensSemTempoMedio();
+  if (avisoTempoCatalogo) {
+    avisoTempoCatalogo.hidden = pendentes.length === 0;
+    avisoTempoCatalogo.querySelector("strong").textContent = `${pendentes.length} ${pendentes.length === 1 ? "item ainda precisa" : "itens ainda precisam"} de tempo médio.`;
+  }
+  if (badgeTempoCatalogo) {
+    badgeTempoCatalogo.hidden = pendentes.length === 0;
+    badgeTempoCatalogo.textContent = String(pendentes.length);
+    badgeTempoCatalogo.setAttribute("aria-label", `${pendentes.length} itens sem tempo médio`);
+  }
+  if (catalogoContagem) {
+    const total = catalogoItens.length;
+    catalogoContagem.textContent = `${total} ${total === 1 ? "item cadastrado" : "itens cadastrados"}${pendentes.length ? ` · ${pendentes.length} ${pendentes.length === 1 ? "pendência" : "pendências"} de tempo` : " · catálogo completo"}`;
+  }
+  return pendentes;
+}
+
+function atualizarMapaCatalogo() {
+  catalogoProcedimentos = Object.fromEntries(
+    catalogoItens.filter((item) => item.ativo !== false).map((item) => [item.nome, Number(item.valor) || 0])
+  );
+  atualizarListaProcedimentosManual();
+}
+
+function tempoMedioDoProcedimento(procedimento) {
+  return calcularTempoMedio(procedimento, catalogoItens);
+}
+
+function renderizarEditorPrecos() {
+  listaValoresServicos.innerHTML = "";
+  atualizarPendenciasTempoMedio();
+  catalogoItens.forEach((item) => {
+    const linha = document.createElement("div");
+    linha.className = "service-price-row-admin";
+    const detalhes = document.createElement("div");
+    detalhes.className = "catalogo-item-detalhes";
+    const topo = document.createElement("div");
+    topo.className = "catalogo-item-topo";
+    const nome = document.createElement("strong");
+    nome.textContent = item.nome;
+    const tipo = document.createElement("span");
+    tipo.className = "catalogo-tipo";
+    tipo.textContent = item.tipo === "combo" ? "Combo" : item.tipo === "produto" ? "Produto" : "Serviço";
+    topo.append(nome, tipo);
+    const descricao = document.createElement("p");
+    descricao.textContent = item.descricao || "Sem descrição";
+    const valor = document.createElement("span");
+    valor.className = "catalogo-item-valor";
+    valor.textContent = brl(item.valor);
+    const tempo = document.createElement("span");
+    tempo.className = `catalogo-item-tempo${tempoMedioConfigurado(item) ? "" : " pendente"}`;
+    tempo.innerHTML = `<i class="fa-regular fa-clock" aria-hidden="true"></i> ${tempoMedioConfigurado(item) ? `Tempo médio: ${formatarTempoMedio(item.tempoMedioMinutos)}` : "Tempo médio pendente"}`;
+    detalhes.append(topo, descricao, valor, tempo);
+    const acoes = document.createElement("div");
+    acoes.className = "catalogo-item-acoes";
+    const editar = document.createElement("button");
+    editar.type = "button";
+    editar.className = "btnSecundario";
+    editar.dataset.acaoCatalogo = "editar";
+    editar.dataset.id = item.id;
+    editar.textContent = "Editar";
+    const excluir = document.createElement("button");
+    excluir.type = "button";
+    excluir.className = "btnSecundario catalogo-excluir";
+    excluir.dataset.acaoCatalogo = "excluir";
+    excluir.dataset.id = item.id;
+    excluir.textContent = "Excluir";
+    acoes.append(editar, excluir);
+    linha.append(detalhes, acoes);
+    listaValoresServicos.appendChild(linha);
+  });
+}
+
+function abrirFormularioProduto(item = null) {
+  formProdutoCatalogo.reset();
+  formProdutoCatalogo.dataset.editandoId = item?.id || "";
+  document.getElementById("tituloFormProduto").textContent = item ? "Editar item" : "Novo item";
+  formProdutoCatalogo.querySelector('[type="submit"]').textContent = item ? "Salvar alterações" : "Adicionar ao catálogo";
+  campoProdutoNome.value = item?.nome || "";
+  campoProdutoTipo.value = item?.tipo || "servico";
+  campoProdutoValor.value = item ? Number(item.valor).toFixed(2) : "";
+  campoProdutoDescricao.value = item?.descricao || "";
+  campoProdutoTempoMedio.value = tempoMedioConfigurado(item) ? String(item.tempoMedioMinutos) : "";
+  formProdutoCatalogo.hidden = false;
+  campoProdutoNome.focus();
+}
+
+function fecharFormularioProduto() {
+  formProdutoCatalogo.hidden = true;
+  formProdutoCatalogo.dataset.editandoId = "";
+  formProdutoCatalogo.reset();
+}
+
+document.getElementById("btnNovoProduto").addEventListener("click", () => abrirFormularioProduto());
+document.getElementById("cancelarProduto").addEventListener("click", fecharFormularioProduto);
+listaValoresServicos.addEventListener("click", (evento) => {
+  const botao = evento.target.closest("[data-acao-catalogo]");
+  if (!botao) return;
+  const indice = catalogoItens.findIndex((item) => item.id === botao.dataset.id);
+  if (indice < 0) return;
+  if (botao.dataset.acaoCatalogo === "editar") return abrirFormularioProduto(catalogoItens[indice]);
+  if (!confirm(`Remover “${catalogoItens[indice].nome}” do catálogo?`)) return;
+  catalogoItens.splice(indice, 1);
+  atualizarMapaCatalogo();
+  renderizarEditorPrecos();
+  atualizarPendenciasTempoMedio();
+});
+
+formProdutoCatalogo.addEventListener("submit", (evento) => {
+  evento.preventDefault();
+  const nome = campoProdutoNome.value.trim();
+  const valor = Number(campoProdutoValor.value);
+  const tempoMedioMinutos = Number(campoProdutoTempoMedio.value);
+  if (!nome || !Number.isFinite(valor) || valor < 0) return alert("Informe um nome e um valor válido para o item.");
+  if (!Number.isInteger(tempoMedioMinutos) || tempoMedioMinutos <= 0) return alert("Informe o tempo médio de atendimento em minutos.");
+  const editandoId = formProdutoCatalogo.dataset.editandoId;
+  const duplicado = catalogoItens.some((item) => item.id !== editandoId && item.nome.trim().toLocaleLowerCase("pt-BR") === nome.toLocaleLowerCase("pt-BR"));
+  if (duplicado) return alert("Já existe um item com esse nome no catálogo.");
+  const existente = catalogoItens.find((item) => item.id === editandoId);
+  const item = {
+    id: existente?.id || (crypto.randomUUID ? crypto.randomUUID() : `${criarIdCatalogo(nome)}-${Date.now()}`),
+    nome,
+    descricao: campoProdutoDescricao.value.trim(),
+    valor,
+    tempoMedioMinutos,
+    tipo: campoProdutoTipo.value,
+    ativo: true
+  };
+  if (existente) Object.assign(existente, item);
+  else catalogoItens.push(item);
+  atualizarMapaCatalogo();
+  renderizarEditorPrecos();
+  atualizarPendenciasTempoMedio();
+  fecharFormularioProduto();
+});
+
+function atualizarListaProcedimentosManual() {
+  if (!catalogoManual) return;
+  catalogoManual.innerHTML = "";
+  Object.keys(catalogoProcedimentos).forEach((nome) => {
+    const option = document.createElement("option");
+    option.value = nome;
+    catalogoManual.appendChild(option);
+  });
+}
+async function carregarCatalogoPrecosAdmin() {
+  const snap = await getDoc(valoresServicosRef);
+  const dados = snap.exists() ? snap.data() : {};
+  if (Array.isArray(dados.catalogo)) {
+    catalogoItens = dados.catalogo
+      .filter((item) => item && typeof item.nome === "string")
+      .map((item) => ({
+        id: item.id || criarIdCatalogo(item.nome),
+        nome: item.nome.trim(),
+        descricao: typeof item.descricao === "string" ? item.descricao : "",
+        valor: Number(item.valor ?? dados.precos?.[item.nome]) || 0,
+        tempoMedioMinutos: Number(item.tempoMedioMinutos) || 0,
+        tipo: ["servico", "produto", "combo"].includes(item.tipo) ? item.tipo : "servico",
+        ativo: item.ativo !== false
+      }));
+  } else {
+    const precosLegados = dados.precos || {};
+    catalogoItens = CATALOGO_PADRAO.map((item) => ({ ...item, valor: Number(precosLegados[item.nome] ?? item.valor), ativo: true }));
+    Object.entries(precosLegados).forEach(([nome, valor]) => {
+      if (!catalogoItens.some((item) => item.nome === nome)) {
+        catalogoItens.push({ id: criarIdCatalogo(nome) || `item-${Date.now()}`, nome, descricao: "", valor: Number(valor) || 0, tipo: "produto", ativo: true });
+      }
+    });
+  }
+  atualizarMapaCatalogo();
+  atualizarPendenciasTempoMedio();
+  return catalogoProcedimentos;
+}
+async function abrirEditorPrecos(catalogoCarregado = false) {
+  try {
+    if (!catalogoCarregado) await carregarCatalogoPrecosAdmin();
+    renderizarEditorPrecos();
+    atualizarPendenciasTempoMedio();
+    modalValoresServicos.style.display = "flex";
+  } catch (e) {
+    console.error("Erro ao carregar valores dos procedimentos:", e);
+    alert("Não foi possível carregar os valores. Verifique a conexão e tente novamente.");
+  }
+}
+document.getElementById("btnValoresServicos").addEventListener("click", () => abrirEditorPrecos());
+document.getElementById("fecharValoresServicos").addEventListener("click", () => { modalValoresServicos.style.display = "none"; });
+document.getElementById("salvarValoresServicos").addEventListener("click", async () => {
+  if (!catalogoItens.length) return alert("Adicione pelo menos um item antes de salvar o catálogo.");
+  atualizarMapaCatalogo();
+  const novosPrecos = Object.fromEntries(catalogoItens.map((item) => [item.nome, Number(item.valor) || 0]));
+  const botao = document.getElementById("salvarValoresServicos");
+  botao.disabled = true;
+  try {
+    await setDoc(valoresServicosRef, { precos: novosPrecos, catalogo: catalogoItens }, { merge: true });
+    const pendentes = atualizarPendenciasTempoMedio();
+    if (pendentes.length) {
+      alert(`Catálogo salvo, mas ainda faltam tempos médios em ${pendentes.length} item(ns). Complete o cadastro para concluir esta pendência.`);
+    } else {
+      alert("Catálogo salvo com os tempos médios. As informações já aparecem no site, no chat e nos novos agendamentos.");
+      modalValoresServicos.style.display = "none";
+    }
+  } catch (e) {
+    console.error("Erro ao salvar valores dos procedimentos:", e);
+    alert("Não foi possível salvar os valores. Verifique a conexão e as permissões do Firebase.");
+  } finally {
+    botao.disabled = false;
+  }
+});
+window.addEventListener("click", (e) => {
+  if (e.target === modalValoresServicos) modalValoresServicos.style.display = "none";
+});
+
+const campoProcedimentoManual = document.getElementById("procedimentoManual");
+const campoValorManual = document.getElementById("valorManual");
+const catalogoManual = document.getElementById("procedimentosCatalogo");
+if (catalogoManual) {
+  catalogoManual.innerHTML = "";
+  Object.keys(catalogoProcedimentos).forEach((nome) => {
+    const option = document.createElement("option");
+    option.value = nome;
+    catalogoManual.appendChild(option);
+  });
+}
+if (campoProcedimentoManual && campoValorManual) {
+  campoProcedimentoManual.addEventListener("input", () => {
+    const valor = catalogoProcedimentos[campoProcedimentoManual.value];
+    if (valor !== undefined) campoValorManual.value = valor;
+    const tempo = tempoMedioDoProcedimento(campoProcedimentoManual.value);
+    const aviso = document.getElementById("tempoMedioManual");
+    if (aviso) aviso.textContent = tempo > 0 ? `Tempo médio: ${formatarTempoMedio(tempo)}` : "Tempo médio não cadastrado no catálogo";
+  });
 }
 
 // --- Login --- //
@@ -95,13 +371,34 @@ btnLogout.addEventListener("click", async () => {
 
 // --- Observa login --- //
 onAuthStateChanged(auth, (user) => {
-  if (user) {
+  if (user && !user.email) {
+    // A sessão por SMS da área da cliente não concede acesso ao painel.
+    signOut(auth);
+    adminContainer.style.display = "none";
+    loginContainer.style.display = "flex";
+    return;
+  }
+  if (user?.email) {
     loginContainer.style.display = "none";
     adminContainer.style.display = "block";
     criarFiltros();
     carregarAgendamentos();
     carregarDespesas();
     verificarAniversariantesHoje();
+    setTimeout(() => verificarReagendamentosPendentes(true), 1800);
+    setTimeout(async () => {
+      try {
+        await carregarCatalogoPrecosAdmin();
+        const pendentesTempo = atualizarPendenciasTempoMedio();
+        carregarAgendamentos();
+        if (pendentesTempo.length) {
+          renderizarEditorPrecos();
+          modalValoresServicos.style.display = "flex";
+        }
+      } catch (e) {
+        console.error("Não foi possível verificar os tempos médios do catálogo:", e);
+      }
+    }, 900);
     setTimeout(verificarFinalizacoes, 4000);
     // Espera o layout renderizar para calcular a posição do cabeçalho fixo
     requestAnimationFrame(ajustarHeaderFixo);
@@ -131,6 +428,36 @@ window.addEventListener("resize", () => {
   if (adminContainer.style.display !== "none") ajustarHeaderFixo();
 });
 
+
+// --- Navegação entre agenda e financeiro --- //
+const adminTabs = [...document.querySelectorAll(".admin-tab")];
+const adminPanels = [...document.querySelectorAll(".dashboard-panel")];
+
+function ativarAbaAdmin(tabId) {
+  adminTabs.forEach((tab) => {
+    const ativa = tab.id === tabId;
+    tab.setAttribute("aria-selected", String(ativa));
+    tab.tabIndex = ativa ? 0 : -1;
+    tab.classList.toggle("is-active", ativa);
+  });
+
+  adminPanels.forEach((panel) => {
+    panel.hidden = panel.getAttribute("aria-labelledby") !== tabId;
+  });
+}
+
+adminTabs.forEach((tab, index) => {
+  tab.addEventListener("click", () => ativarAbaAdmin(tab.id));
+  tab.addEventListener("keydown", (event) => {
+    if (!["ArrowLeft", "ArrowRight", "Home", "End"].includes(event.key)) return;
+    event.preventDefault();
+    const nextIndex = event.key === "Home" ? 0 : event.key === "End" ? adminTabs.length - 1
+      : (index + (event.key === "ArrowRight" ? 1 : -1) + adminTabs.length) % adminTabs.length;
+    adminTabs[nextIndex].focus();
+    ativarAbaAdmin(adminTabs[nextIndex].id);
+  });
+});
+ativarAbaAdmin("tabAgendamentos");
 // --- Criar filtros de mês e dia --- //
 // Meses do filtro: por padrão, do mês atual até 12 meses à frente.
 // Os meses anteriores só aparecem se a opção "Mostrar meses anteriores" for marcada.
@@ -221,7 +548,7 @@ function criarFiltros() {
   lblAnteriores.append(chkAnteriores, " Mostrar meses anteriores");
 
   filtrosContainer.append(selectMes, inputDia, btnFiltrar, btnTodosMeses, lblAnteriores);
-  adminContainer.insertBefore(filtrosContainer, adminContainer.querySelector(".panel-title"));
+  adminContainer.insertBefore(filtrosContainer, adminContainer.querySelector(".admin-tabs") || adminContainer.querySelector(".panel-title"));
 
   // Botão "🔍 Filtros" no cabeçalho abre/fecha o painel de filtros
   const btnFiltros = document.getElementById("btnFiltros");
@@ -411,12 +738,14 @@ if (btnDisponibilidade) {
 
 // --- Sincroniza a coleção pública "horariosOcupados" (sem dados pessoais) ---
 // usada pelo chat do site para saber quais horários já não estão mais livres.
-async function adicionarHorarioOcupado(data, horario) {
-  if (!data || !horario) return;
+async function adicionarHorarioOcupado(data, horario, agendamentoId) {
+  if (!data || !horario) return "";
   try {
-    await addDoc(collection(db, "horariosOcupados"), { data, horario });
+    const ocupacao = await addDoc(collection(db, "horariosOcupados"), { data, horario, ...(agendamentoId ? { agendamentoId } : {}) });
+    return ocupacao.id;
   } catch (e) {
     console.error("Erro ao registrar horário ocupado:", e);
+    return "";
   }
 }
 
@@ -465,7 +794,7 @@ function sinalBadge(ag) {
 
 function atualizarBotaoSinais(pendentes) {
   const btn = document.getElementById("btnSinais");
-  if (btn) btn.textContent = pendentes > 0 ? `💰 Sinais (${pendentes})` : "💰 Sinais";
+  if (btn) btn.innerHTML = `<i class="fa-solid fa-circle-dollar-to-slot"></i> Sinais${pendentes > 0 ? ` <span class="toolbar-count">${pendentes}</span>` : ""}`;
 }
 
 const MSG_LOCAL =
@@ -1142,7 +1471,7 @@ async function atualizarBotaoMeta(ags) {
   if (!btnMeta) return;
   await carregarMetaCfg();
   const c = calcularMeta(ags, mesAtualYM());
-  btnMeta.textContent = c.meta ? `🎯 Meta (${c.pct.toFixed(0)}%)` : "🎯 Meta";
+  btnMeta.innerHTML = `<i class="fa-solid fa-chart-line"></i> Meta mensal${c.meta ? ` <span class="toolbar-count">${c.pct.toFixed(0)}%</span>` : ""}`;
 }
 
 function popularMesesMeta(incluirAnteriores) {
@@ -1287,7 +1616,7 @@ async function verificarFinalizacoes() {
 
   const agora = new Date();
   filaFinalizacao = docs
-    .filter((ag) => ag.concluido !== true && !ag.finalizacaoStatus && !adiadosFinalizacao.has(ag.id) && contaNaMeta(ag))
+    .filter((ag) => ag.concluido !== true && !ag.finalizacaoStatus && !ag.reagendamentoPendente && !adiadosFinalizacao.has(ag.id) && contaNaMeta(ag))
     .map((ag) => ({ ag, fim: fimDoAtendimento(ag) }))
     .filter((x) => x.fim <= agora)
     .sort((a, b) => a.fim - b.fim)
@@ -1414,8 +1743,108 @@ if (modalFinalizacao) {
 }
 
 // --- Carregar agendamentos --- //
+function normalizarDataAgenda(data) {
+  const texto = String(data || "").trim();
+  if (/^\d{4}-\d{2}-\d{2}$/.test(texto)) return texto;
+  const brasileira = texto.match(/^(\d{2})\/(\d{2})\/(\d{4})$/);
+  return brasileira ? `${brasileira[3]}-${brasileira[2]}-${brasileira[1]}` : "";
+}
+
+async function sincronizarHorariosOcupados(agendamentosSnapshot) {
+  try {
+    const ocupacoesSnapshot = await getDocs(collection(db, "horariosOcupados"));
+    const chavesOcupadas = new Set();
+    const ocupacaoPorChave = new Map();
+    ocupacoesSnapshot.forEach((item) => {
+      const ocupacao = item.data();
+      const data = normalizarDataAgenda(ocupacao.data);
+      const horario = String(ocupacao.horario || "").trim();
+      if (data && horario) {
+        const chave = `${data}|${horario}`;
+        chavesOcupadas.add(chave);
+        if (!ocupacaoPorChave.has(chave)) ocupacaoPorChave.set(chave, item);
+      }
+    });
+
+    const pendentes = [];
+    agendamentosSnapshot.forEach((item) => {
+      const agendamento = item.data();
+      const telefoneBusca = String(agendamento.telefone || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+      if (telefoneBusca && agendamento.telefoneBusca !== telefoneBusca) {
+        pendentes.push(updateDoc(doc(db, "agendamentos", item.id), { telefoneBusca }));
+      }
+      if (agendamento.canceladoCliente) return;
+      const data = normalizarDataAgenda(agendamento.data);
+      const horario = String(agendamento.horario || "").trim();
+      if (!data || !horario) return;
+      const chave = `${data}|${horario}`;
+      if (chavesOcupadas.has(chave)) {
+        const ocupacaoExistente = ocupacaoPorChave.get(chave);
+        if (ocupacaoExistente && !ocupacaoExistente.data().agendamentoId) {
+          pendentes.push(updateDoc(doc(db, "horariosOcupados", ocupacaoExistente.id), { agendamentoId: item.id }));
+        }
+        return;
+      }
+
+      // Usa um documento independente para nunca sobrescrever uma reserva
+      // criada simultaneamente pelo chatbot.
+      pendentes.push(addDoc(collection(db, "horariosOcupados"), {
+        data,
+        horario,
+        agendamentoId: item.id
+      }));
+      chavesOcupadas.add(chave);
+    });
+    await Promise.all(pendentes);
+
+    // Public lookup mirror: clients can fetch one phone-specific document only.
+    // This keeps the appointment collection private and needs no Cloud Functions.
+    const consultas = new Map();
+    agendamentosSnapshot.forEach((item) => {
+      const ag = item.data();
+      const telefoneBusca = String(ag.telefoneBusca || ag.telefone || "").replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, "");
+      if (!/^\d{10,11}$/.test(telefoneBusca)) return;
+      const nome = String(ag.nome || "").trim();
+      const nomeBusca = nome.normalize("NFD").replace(/[\u0300-\u036f]/g, "").toLowerCase().replace(/\s+/g, " ").trim();
+      const nomeKey = nomeBusca.replace(/[^a-z0-9]+/g, "-").replace(/^-|-$/g, "").slice(0, 100);
+      if (!nomeKey) return;
+      const consultaId = `${telefoneBusca}_${nomeKey}`;
+      if (!consultas.has(consultaId)) consultas.set(consultaId, { telefoneBusca, nomeBusca, agendamentos: [] });
+      consultas.get(consultaId).agendamentos.push({
+        id: item.id,
+        nome,
+        nomeBusca,
+        data: ag.data || "",
+        horario: ag.horario || "",
+        periodo: ag.periodo || "",
+        procedimento: ag.procedimento || "",
+        canceladoCliente: ag.canceladoCliente === true
+      });
+    });
+    consultas.forEach((consulta) => consulta.agendamentos.sort((a, b) => normalizarDataAgenda(a.data).localeCompare(normalizarDataAgenda(b.data))));
+    const espelhoAtual = await getDocs(collection(db, "consultasCliente"));
+    const espelhoPorTelefone = new Map(espelhoAtual.docs.map((item) => [item.id, item]));
+    const tarefasEspelho = [];
+    consultas.forEach((consulta, consultaId) => {
+      const existente = espelhoPorTelefone.get(consultaId)?.data();
+      espelhoPorTelefone.delete(consultaId);
+      if (existente && JSON.stringify(existente.agendamentos || []) === JSON.stringify(consulta.agendamentos)) return;
+      tarefasEspelho.push(setDoc(doc(db, "consultasCliente", consultaId), { ...consulta, atualizadoEm: new Date().toISOString() }));
+    });
+    espelhoPorTelefone.forEach((item) => tarefasEspelho.push(deleteDoc(doc(db, "consultasCliente", item.id))));
+    await Promise.all(tarefasEspelho);
+  } catch (e) {
+    // A visualização do painel continua disponível; registramos o erro para
+    // diagnosticar regras ou conexão e tentar novamente na próxima carga.
+    console.error("Não foi possível sincronizar os horários ocupados:", e);
+  }
+}
+
 async function carregarAgendamentos() {
   const querySnapshot = await getDocs(collection(db, "agendamentos"));
+  // Mantém a agenda pública de horários ocupados compatível com agendamentos
+  // antigos que foram criados antes da sincronização automática do chatbot.
+  await sincronizarHorariosOcupados(querySnapshot);
   tabelaAgendamentos.innerHTML = "";
 
   const filtroMes = filtroMesAtual;
@@ -1424,7 +1853,7 @@ async function carregarAgendamentos() {
   let agendamentos = [];
   querySnapshot.forEach((docSnap) => {
     const ag = docSnap.data();
-    if (!ag.data) return;
+    if (!ag.data || ag.canceladoCliente) return;
     ag.id = docSnap.id;
     agendamentos.push(ag);
   });
@@ -1457,7 +1886,8 @@ agendamentos.sort((a, b) => {
   atualizarBotaoSinais(agendamentos.filter((a) => a.sinalStatus === "aguardando").length);
   atualizarBotaoMeta(agendamentos);
 
-  let total = 0;
+  let totalBruto = 0;
+  let totalDescontos = 0;
   let pagamentos = {};
   let contador = 0;
 
@@ -1473,26 +1903,20 @@ agendamentos.sort((a, b) => {
     const concluido = ag.concluido === true;
 
     contador++;
-    total += valorFinal;
+    totalBruto += valor;
+    totalDescontos += desconto;
     if (ag.formaPagamento)
       pagamentos[ag.formaPagamento] = (pagamentos[ag.formaPagamento] || 0) + valorFinal;
 
     const tr = document.createElement("tr");
     tr.innerHTML = `
-      <td>${esc(ag.nome) || "-"}</td>
-      <td>${esc(ag.telefone) || "-"}</td>
-      <td>${ag.aniversario && ag.aniversario !== "Não informado" ? esc(ag.aniversario) : "-"}</td>
-      <td>${ag.data ? ag.data.split("-").reverse().join("/") : "-"}</td>
-      <td>${esc(ag.periodo) || "-"}</td>
-      <td>${esc(ag.horario) || "-"}</td>
-      <td>${esc(ag.procedimento) || "-"}</td>
-      <td>${esc(ag.formaPagamento) || "-"}</td>
-      <td>R$ ${valor.toFixed(2)}</td>
-      <td>${desconto > 0 ? "Sim (R$ " + desconto.toFixed(2) + ")" : "Não"}</td>
-      <td><strong>R$ ${valorFinal.toFixed(2)}</strong></td>
-      <td>${sinalBadge(ag)}</td>
-      <td><input type="checkbox" class="chkConcluir" data-id="${ag.id}" ${concluido ? "checked" : ""}></td>
-      <td>
+      <td data-label="Cliente"><strong>${esc(ag.nome) || "-"}</strong><span class="appointment-detail">${esc(ag.telefone) || "-"}${ag.aniversario && ag.aniversario !== "Não informado" ? ` · Aniversário: ${esc(ag.aniversario)}` : ""}</span></td>
+      <td data-label="Data e horário"><strong>${ag.data ? ag.data.split("-").reverse().join("/") : "-"}</strong><span class="appointment-detail">${esc(ag.periodo) || "-"} · ${esc(ag.horario) || "-"}</span>${(Number(ag.tempoMedioMinutos) || tempoMedioDoProcedimento(ag.procedimento)) > 0 ? `<span class="appointment-detail"><i class="fa-regular fa-clock" aria-hidden="true"></i> ${formatarTempoMedio(Number(ag.tempoMedioMinutos) || tempoMedioDoProcedimento(ag.procedimento))}</span>` : ""}${ag.solicitacaoCliente ? `<span class="appointment-client-request">Pedido da cliente: ${esc(ag.solicitacaoCliente.tipo === "cancelamento" ? "cancelamento" : `reagendamento para ${ag.solicitacaoCliente.data || "data a combinar"} às ${ag.solicitacaoCliente.horario || "horário a combinar"}`)}</span>` : ""}</td>
+      <td data-label="Procedimento">${esc(ag.procedimento) || "-"}</td>
+      <td data-label="Pagamento"><strong>${esc(ag.formaPagamento) || "-"}</strong><span class="appointment-detail">Sinal: ${sinalBadge(ag)}</span></td>
+      <td data-label="Valores"><span class="appointment-amount"><span>Bruto: ${brl(valor)}</span>${desconto > 0 ? `<span class="discount">Desconto: ${brl(desconto)}</span>` : ""}<strong class="final">Final: ${brl(valorFinal)}</strong></span></td>
+      <td data-label="Status"><span class="appointment-status"><input type="checkbox" class="chkConcluir" data-id="${ag.id}" ${concluido ? "checked" : ""}><label>${concluido ? "Concluído" : "Pendente"}</label></span></td>
+      <td data-label="Ações">
         <button class="btnAcoes"
           data-id="${ag.id}"
           data-tel="${esc(ag.telefone)}"
@@ -1501,22 +1925,44 @@ agendamentos.sort((a, b) => {
           data-periodo="${esc(ag.periodo)}"
           data-horario="${esc(ag.horario)}"
           data-procedimento="${esc(ag.procedimento)}"
-          data-valor="${(ag.valor - (ag.desconto || 0)).toFixed(2)}">
-          ⚙️ Ações
+          data-valor="${valorFinal.toFixed(2)}"
+          data-valorbruto="${valor.toFixed(2)}"
+          data-desconto="${desconto.toFixed(2)}"
+          data-reagendamentopendente="${Boolean(ag.reagendamentoPendente)}">
+          <i class="fa-solid fa-sliders" aria-hidden="true"></i>
+          <span>Ações</span>
+          <i class="fa-solid fa-chevron-down btnAcoes-chevron" aria-hidden="true"></i>
         </button>
+        ${ag.solicitacaoCliente ? `<button type="button" class="btnResolverSolicitacao" data-id="${ag.id}">Pedido tratado</button>` : ""}
       </td>
     `;
     tabelaAgendamentos.appendChild(tr);
+    const btnResolverPedido = tr.querySelector(".btnResolverSolicitacao");
+    if (btnResolverPedido) btnResolverPedido.onclick = async () => {
+      if (!confirm("Confirma que o pedido da cliente já foi tratado?")) return;
+      btnResolverPedido.disabled = true;
+      try {
+        await updateDoc(doc(db, "agendamentos", ag.id), { solicitacaoCliente: deleteField() });
+        await carregarAgendamentos();
+      } catch (erro) {
+        console.error("Não foi possível concluir o pedido da cliente:", erro);
+        alert("Não foi possível atualizar o pedido. Tente novamente.");
+        btnResolverPedido.disabled = false;
+      }
+    };
   });
 
-  totalAgendamentos.textContent = `Total de agendamentos: ${contador}`;
-  valorTotal.textContent = `Valor bruto (atendimentos): R$ ${total.toFixed(2)}`;
-  totalBrutoGlobal = total;
+  totalAgendamentos.innerHTML = `<span>Atendimentos</span><strong>${contador}</strong>`;
+  valorTotal.innerHTML = `<span>Faturamento bruto</span><strong>${brl(totalBruto)}</strong>`;
+  totalBrutoGlobal = totalBruto;
+  totalDescontosGlobal = totalDescontos;
+  const percentualDesconto = totalBruto > 0 ? (totalDescontos / totalBruto) * 100 : 0;
+  if (valorDescontosEl) valorDescontosEl.innerHTML = `<span>Descontos concedidos</span><strong>${brl(totalDescontos)}</strong><small>${percentualDesconto.toLocaleString("pt-BR", { maximumFractionDigits: 1 })}% do faturamento</small>`;
   atualizarResumoLiquido();
 
   let resumoHTML = "<h4>Formas de Pagamento:</h4><ul>";
   for (const [forma, valor] of Object.entries(pagamentos))
-    resumoHTML += `<li>${forma}: R$ ${valor.toFixed(2)}</li>`;
+    resumoHTML += `<li><span>${forma}</span><strong>${brl(valor)}</strong></li>`;
   resumoHTML += "</ul>";
   pagamentosResumo.innerHTML = resumoHTML;
 
@@ -1524,6 +1970,8 @@ agendamentos.sort((a, b) => {
     chk.addEventListener("change", async (e) => {
       const id = e.target.dataset.id;
       const concluido = e.target.checked;
+      const statusLabel = e.target.closest(".appointment-status")?.querySelector("label");
+      if (statusLabel) statusLabel.textContent = concluido ? "Concluído" : "Pendente";
       await updateDoc(doc(db, "agendamentos", id), { concluido });
       if (concluido) alert("💖 Mais um atendimento concluído! Parabéns, Ana! 🎉✨");
     });
@@ -1566,7 +2014,7 @@ async function carregarDespesas() {
       <td>${d.data ? d.data.split("-").reverse().join("/") : "-"}</td>
       <td>${d.descricao || "-"}</td>
       <td>${d.formaPagamento || "-"}</td>
-      <td>R$ ${valor.toFixed(2)}</td>
+      <td>${brl(valor)}</td>
       <td>
         <button class="btnPerigo btnExcluirDespesa" data-id="${d.id}">🗑️ Excluir</button>
       </td>
@@ -1574,7 +2022,15 @@ async function carregarDespesas() {
     tabelaDespesas.appendChild(tr);
   });
 
-  if (valorDespesasEl) valorDespesasEl.textContent = `Despesas: R$ ${totalDespesas.toFixed(2)}`;
+  if (valorDespesasEl) valorDespesasEl.innerHTML = `<span>Despesas registradas</span><strong>${brl(totalDespesas)}</strong>`;
+  const despesasTotalInline = document.getElementById("despesasTotalInline");
+  if (despesasTotalInline) despesasTotalInline.innerHTML = `<span>Total do período</span><strong>${brl(totalDespesas)}</strong>`;
+  if (tabelaDespesas.children.length === 0) {
+    const linhaVazia = document.createElement("tr");
+    linhaVazia.className = "empty-expenses-row";
+    linhaVazia.innerHTML = `<td colspan="6"><div class="empty-expenses"><i class="fa-regular fa-folder-open"></i><strong>Nenhuma despesa neste período</strong><span>Use “Nova despesa” para registrar um lançamento.</span></div></td>`;
+    tabelaDespesas.appendChild(linhaVazia);
+  }
   totalDespesasGlobal = totalDespesas;
   atualizarResumoLiquido();
 
@@ -1631,8 +2087,8 @@ let agendamentoSelecionado = null;
 
 // Abrir modal
 document.addEventListener("click", (e) => {
-  if (e.target.classList.contains("btnAcoes")) {
-    const btn = e.target;
+  const btn = e.target.closest(".btnAcoes");
+  if (btn) {
     agendamentoSelecionado = { 
       id: btn.dataset.id,
       nome: btn.dataset.nome,
@@ -1641,8 +2097,14 @@ document.addEventListener("click", (e) => {
       periodo: btn.dataset.periodo,
       horario: btn.dataset.horario,
       procedimento: btn.dataset.procedimento,
-      valor: btn.dataset.valor
+      valor: btn.dataset.valor,
+      valorBruto: Number(btn.dataset.valorbruto || 0),
+      desconto: Number(btn.dataset.desconto || 0),
+      reagendamentoPendente: btn.dataset.reagendamentopendente === "true"
     };
+    document.getElementById("descontoRapido").hidden = true;
+    document.getElementById("formReagendamentoRapido").hidden = true;
+    document.querySelector("#modalAcoes .acoes-botoes").style.display = "flex";
     modalAcoes.style.display = "flex";
   }
 });
@@ -1652,8 +2114,556 @@ fecharAcoes.onclick = () => modalAcoes.style.display = "none";
 btnFecharModalAcoes.onclick = () => modalAcoes.style.display = "none";
 window.onclick = (e) => { if (e.target === modalAcoes) modalAcoes.style.display = "none"; };
 
+const formReagendamentoRapido = document.getElementById("formReagendamentoRapido");
+const selectNovaDataAgendamento = document.getElementById("novaDataAgendamento");
+const selectNovoHorarioAgendamento = document.getElementById("novoHorarioAgendamento");
+const acoesModalLista = document.querySelector("#modalAcoes .acoes-botoes");
+const mapaPeriodosReagendamento = [
+  ["manha", "Manhã"], ["tarde", "Tarde"], ["noite", "Noite"]
+];
+
+function horariosLivresNaData(data, config, ocupadosPorData) {
+  const bloqueados = new Set([...(config.horariosBloqueados?.[data] || []), ...(ocupadosPorData.get(data) || [])]);
+  if (data === agendamentoSelecionado?.data && agendamentoSelecionado?.horario) bloqueados.add(agendamentoSelecionado.horario);
+  const disponiveis = new Set();
+  for (const [chave, periodo] of mapaPeriodosReagendamento) {
+    const cfg = config.periodos?.[chave];
+    if (!cfg || cfg.ativo === false) continue;
+    for (let hora = Number(cfg.inicio); hora <= Number(cfg.fim); hora++) {
+      const slot = `${String(hora).padStart(2, "0")}:00`;
+      if (bloqueados.has(slot)) continue;
+      const agora = new Date();
+      const hojeISO = `${agora.getFullYear()}-${String(agora.getMonth() + 1).padStart(2, "0")}-${String(agora.getDate()).padStart(2, "0")}`;
+      if (data === hojeISO) {
+        if (hora <= agora.getHours()) continue;
+      }
+      disponiveis.add(slot);
+    }
+  }
+  return [...disponiveis].sort();
+}
+
+async function prepararOpcoesReagendamento() {
+  const hoje = new Date();
+  hoje.setHours(0, 0, 0, 0);
+  const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+  const config = await carregarConfigDisponibilidade();
+  let ocupadosPorData = new Map();
+  try {
+    const snapshot = await getDocs(query(collection(db, "horariosOcupados"), where("data", ">=", hojeISO)));
+    snapshot.forEach((item) => {
+      const { data, horario } = item.data();
+      if (!data || !horario) return;
+      if (!ocupadosPorData.has(data)) ocupadosPorData.set(data, []);
+      ocupadosPorData.get(data).push(horario);
+    });
+  } catch (e) {
+    console.error("Não foi possível consultar os horários livres:", e);
+    throw new Error("Não foi possível consultar a agenda. Verifique a conexão e tente novamente.");
+  }
+
+  selectNovaDataAgendamento.innerHTML = '<option value="">Selecione uma data livre</option>';
+  for (let deslocamento = 0; deslocamento < 365; deslocamento++) {
+    const data = new Date(hoje);
+    data.setDate(hoje.getDate() + deslocamento);
+    const dataISO = `${data.getFullYear()}-${String(data.getMonth() + 1).padStart(2, "0")}-${String(data.getDate()).padStart(2, "0")}`;
+    if (config.diasSemana?.[data.getDay()] === false || (config.diasBloqueados || []).includes(dataISO)) continue;
+    const horarios = horariosLivresNaData(dataISO, config, ocupadosPorData);
+    if (!horarios.length) continue;
+    const opcao = document.createElement("option");
+    opcao.value = dataISO;
+    opcao.textContent = `${data.toLocaleDateString("pt-BR", { weekday: "long", day: "2-digit", month: "2-digit", year: "numeric" })} · ${horarios.length} horários`;
+    selectNovaDataAgendamento.appendChild(opcao);
+  }
+  if (selectNovaDataAgendamento.options.length === 1) {
+    selectNovaDataAgendamento.options[0].textContent = "Nenhuma data livre nos próximos 12 meses";
+  }
+  selectNovoHorarioAgendamento.innerHTML = '<option value="">Selecione uma data</option>';
+  selectNovoHorarioAgendamento.disabled = true;
+  document.getElementById("enviarReagendamento").disabled = true;
+}
+
+document.getElementById("acaoAbrirReagendamento").onclick = async () => {
+  if (agendamentoSelecionado?.reagendamentoPendente) {
+    return alert("Este atendimento já tem uma sugestão aguardando a cliente. Acompanhe pelo botão Pendentes no painel.");
+  }
+  document.getElementById("descontoRapido").hidden = true;
+  acoesModalLista.style.display = "none";
+  formReagendamentoRapido.hidden = false;
+  selectNovaDataAgendamento.innerHTML = '<option value="">Carregando datas disponíveis...</option>';
+  selectNovoHorarioAgendamento.innerHTML = '<option value="">Selecione uma data</option>';
+  selectNovoHorarioAgendamento.disabled = true;
+  try {
+    await prepararOpcoesReagendamento();
+  } catch (e) {
+    alert(e.message || "Não foi possível carregar os horários disponíveis.");
+    formReagendamentoRapido.hidden = true;
+    acoesModalLista.style.display = "flex";
+  }
+};
+document.getElementById("cancelarReagendamento").onclick = () => {
+  formReagendamentoRapido.hidden = true;
+  acoesModalLista.style.display = "flex";
+};
+selectNovaDataAgendamento.addEventListener("change", async () => {
+  const data = selectNovaDataAgendamento.value;
+  selectNovoHorarioAgendamento.innerHTML = '<option value="">Carregando horários...</option>';
+  selectNovoHorarioAgendamento.disabled = true;
+  document.getElementById("enviarReagendamento").disabled = true;
+  if (!data) return;
+  try {
+    const config = await carregarConfigDisponibilidade();
+    const dataLocal = new Date(`${data}T12:00:00`);
+    const snapshot = await getDocs(query(collection(db, "horariosOcupados"), where("data", "==", data)));
+    const ocupados = new Map([[data, snapshot.docs.map((item) => item.data().horario).filter(Boolean)]]);
+    const diaBloqueado = config.diasSemana?.[dataLocal.getDay()] === false || (config.diasBloqueados || []).includes(data);
+    const horarios = diaBloqueado ? [] : horariosLivresNaData(data, config, ocupados);
+    selectNovoHorarioAgendamento.innerHTML = '<option value="">Selecione um horário livre</option>';
+    horarios.forEach((hora) => {
+      const opcao = document.createElement("option");
+      opcao.value = hora;
+      opcao.textContent = hora;
+      selectNovoHorarioAgendamento.appendChild(opcao);
+    });
+    if (!horarios.length) selectNovoHorarioAgendamento.options[0].textContent = "Não há horários livres nesta data";
+    selectNovoHorarioAgendamento.disabled = horarios.length === 0;
+  } catch (e) {
+    console.error("Não foi possível atualizar os horários disponíveis:", e);
+    selectNovoHorarioAgendamento.innerHTML = '<option value="">Erro ao carregar horários</option>';
+    alert("Não foi possível atualizar os horários. Tente selecionar a data novamente.");
+  }
+});
+selectNovoHorarioAgendamento.addEventListener("change", () => {
+  document.getElementById("enviarReagendamento").disabled = !selectNovoHorarioAgendamento.value;
+});
+function obterPeriodoReagendamento(config, horario) {
+  const hora = Number(String(horario).split(":")[0]);
+  for (const [chave, rotulo] of mapaPeriodosReagendamento) {
+    const periodo = config.periodos?.[chave];
+    if (periodo && periodo.ativo !== false && hora >= Number(periodo.inicio) && hora <= Number(periodo.fim)) return rotulo;
+  }
+  return agendamentoSelecionado?.periodo || "Manhã";
+}
+
+document.getElementById("enviarReagendamento").onclick = async () => {
+  if (!agendamentoSelecionado) return;
+  if (agendamentoSelecionado.reagendamentoPendente) return alert("Este atendimento já tem uma proposta pendente. Resolva a proposta atual antes de criar outra.");
+  if (!(agendamentoSelecionado.telefone || "").replace(/\D/g, "")) return alert("A cliente não tem telefone cadastrado.");
+  const dataISO = selectNovaDataAgendamento.value;
+  const horario = selectNovoHorarioAgendamento.value;
+  if (!dataISO || !horario) return alert("Escolha uma data e um horário disponível.");
+  const janelaWhatsApp = window.open("about:blank", "_blank");
+  if (!janelaWhatsApp) return alert("Permita a abertura de pop-ups para preparar a mensagem no WhatsApp.");
+  const data = dataISO.split("-").reverse().join("/");
+  const nome = agendamentoSelecionado.nome || "Maravilhosa";
+  const mensagem = `Olá ${nome}, tudo bem? 💕\n\nPrecisamos reorganizar seu atendimento e encontrei uma opção disponível para você:\n\n📅 *${data}*\n🕒 *${horario}*\n\nEsse horário funciona para você? Me confirme por aqui para combinarmos direitinho. 😊`;
+  let ocupacaoNova = null;
+  const botaoEnvio = document.getElementById("enviarReagendamento");
+  botaoEnvio.disabled = true;
+  try {
+    const config = await carregarConfigDisponibilidade();
+    const dataLocal = new Date(`${dataISO}T12:00:00`);
+    if (config.diasSemana?.[dataLocal.getDay()] === false || (config.diasBloqueados || []).includes(dataISO) || (config.horariosBloqueados?.[dataISO] || []).includes(horario)) {
+      throw new Error("Essa data ou horário acabou de ser bloqueado. Escolha outra opção disponível.");
+    }
+    const ocupados = await getDocs(query(collection(db, "horariosOcupados"), where("data", "==", dataISO)));
+    if (ocupados.docs.some((item) => item.data().horario === horario)) {
+      throw new Error("Esse horário acabou de ser reservado. Escolha outra opção disponível.");
+    }
+    const periodo = obterPeriodoReagendamento(config, horario);
+    ocupacaoNova = await addDoc(collection(db, "horariosOcupados"), {
+      data: dataISO, horario, reagendamentoPendente: true, agendamentoId: agendamentoSelecionado.id
+    });
+    await updateDoc(doc(db, "agendamentos", agendamentoSelecionado.id), {
+      reagendamentoPendente: {
+        data: dataISO,
+        horario,
+        periodo,
+        enviadoEm: new Date().toISOString(),
+        ocupacaoId: ocupacaoNova.id
+      }
+    });
+    const tel = (agendamentoSelecionado.telefone || "").replace(/\D/g, "");
+    janelaWhatsApp.location.href = `https://wa.me/55${tel}?text=${encodeURIComponent(mensagem)}`;
+    modalAcoes.style.display = "none";
+    await verificarReagendamentosPendentes(true);
+  } catch (e) {
+    if (ocupacaoNova) await deleteDoc(doc(db, "horariosOcupados", ocupacaoNova.id)).catch(() => {});
+    janelaWhatsApp.close();
+    console.error("Não foi possível registrar a proposta de reagendamento:", e);
+    alert(e.message || "Não foi possível registrar a proposta. Tente novamente.");
+    botaoEnvio.disabled = false;
+  }
+};
+
+const modalPendentes = document.getElementById("modalReagendamentosPendentes");
+const listaPendentes = document.getElementById("listaReagendamentosPendentes");
+const btnPendentes = document.getElementById("btnReagendamentosPendentes");
+function atualizarBotaoPendentes(quantidade) {
+  btnPendentes.innerHTML = `<i class="fa-solid fa-clock-rotate-left"></i> Pendentes${quantidade ? ` <span class="toolbar-count-pendentes">${quantidade}</span>` : ""}`;
+  btnPendentes.setAttribute("aria-label", `${quantidade} propostas de reagendamento pendentes`);
+}
+
+async function resolverPropostaReagendamento(agendamento, aceitar) {
+  const proposta = agendamento.reagendamentoPendente;
+  if (!proposta) return;
+  const agendamentoRef = doc(db, "agendamentos", agendamento.id);
+  const batch = writeBatch(db);
+  const ocupacaoRef = proposta.ocupacaoId
+    ? doc(db, "horariosOcupados", proposta.ocupacaoId)
+    : null;
+
+  if (aceitar) {
+    const ocupacoesDoNovoHorario = await getDocs(query(
+      collection(db, "horariosOcupados"),
+      where("data", "==", proposta.data),
+      where("horario", "==", proposta.horario)
+    ));
+    const conflito = ocupacoesDoNovoHorario.docs.some((item) => item.id !== proposta.ocupacaoId);
+    if (conflito) throw new Error("O horário sugerido foi ocupado por outro agendamento. Crie uma nova sugestão.");
+
+    if (ocupacaoRef) {
+      const hold = await getDoc(ocupacaoRef);
+      if (hold.exists()) batch.update(ocupacaoRef, { reagendamentoPendente: false, agendamentoId: agendamento.id });
+      else batch.set(ocupacaoRef, { data: proposta.data, horario: proposta.horario, reagendamentoPendente: false, agendamentoId: agendamento.id });
+    } else {
+      const novaOcupacaoRef = doc(collection(db, "horariosOcupados"));
+      batch.set(novaOcupacaoRef, { data: proposta.data, horario: proposta.horario, reagendamentoPendente: false, agendamentoId: agendamento.id });
+    }
+    batch.update(agendamentoRef, {
+      data: proposta.data,
+      horario: proposta.horario,
+      periodo: proposta.periodo || agendamento.periodo || "Manhã",
+      reagendamentoPendente: deleteField(),
+      reagendamentoConfirmadoEm: new Date().toISOString()
+    });
+    if (agendamento.data && agendamento.horario) {
+      const ocupacoesAntigas = await getDocs(query(
+        collection(db, "horariosOcupados"),
+        where("data", "==", agendamento.data),
+        where("horario", "==", agendamento.horario)
+      ));
+      ocupacoesAntigas.forEach((item) => {
+        if (item.id !== proposta.ocupacaoId) batch.delete(doc(db, "horariosOcupados", item.id));
+      });
+    }
+  } else {
+    batch.update(agendamentoRef, { reagendamentoPendente: deleteField() });
+    if (ocupacaoRef) batch.delete(ocupacaoRef);
+  }
+
+  await batch.commit();
+  await carregarAgendamentos();
+  await verificarReagendamentosPendentes(false);
+  alert(aceitar
+    ? `✅ Reagendamento de ${agendamento.nome || "cliente"} confirmado e atualizado na agenda.`
+    : `A proposta foi cancelada. O horário original de ${agendamento.nome || "cliente"} continua na agenda.`);
+}
+
+async function verificarReagendamentosPendentes(abrirSeExistirem = false) {
+  if (!auth.currentUser) return;
+  try {
+    const snapshot = await getDocs(collection(db, "agendamentos"));
+    const pendentes = snapshot.docs
+      .map((item) => ({ ...item.data(), id: item.id }))
+      .filter((ag) => ag.reagendamentoPendente?.data && ag.reagendamentoPendente?.horario);
+    atualizarBotaoPendentes(pendentes.length);
+    listaPendentes.innerHTML = "";
+    if (!pendentes.length) {
+      listaPendentes.innerHTML = '<div class="pendentes-vazio">Nenhuma proposta aguardando resposta.</div>';
+      if (abrirSeExistirem) modalPendentes.style.display = "none";
+      return;
+    }
+
+    pendentes.sort((a, b) => String(a.reagendamentoPendente.enviadoEm || "").localeCompare(String(b.reagendamentoPendente.enviadoEm || "")));
+    pendentes.forEach((ag) => {
+      const proposta = ag.reagendamentoPendente;
+      const card = document.createElement("article");
+      card.className = "reagendamento-pendente-card";
+      const titulo = document.createElement("h3");
+      titulo.textContent = ag.nome || "Cliente";
+      const contato = document.createElement("p");
+      contato.textContent = `Telefone: ${ag.telefone || "não informado"}${ag.procedimento ? ` · ${ag.procedimento}` : ""}`;
+      const original = document.createElement("p");
+      original.textContent = `Horário atual: ${ag.data ? ag.data.split("-").reverse().join("/") : "-"} às ${ag.horario || "-"}`;
+      const sugerido = document.createElement("p");
+      sugerido.textContent = `Sugestão enviada: ${proposta.data.split("-").reverse().join("/")} às ${proposta.horario}${proposta.periodo ? ` · ${proposta.periodo}` : ""}`;
+      const estado = document.createElement("p");
+      const enviado = proposta.enviadoEm ? new Date(proposta.enviadoEm).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" }) : "";
+      estado.textContent = `Aguardando confirmação${enviado ? ` desde ${enviado}` : ""}`;
+      const acoes = document.createElement("div");
+      acoes.className = "reagendamento-pendente-acoes";
+      const confirmar = document.createElement("button");
+      confirmar.className = "btnPrimario";
+      confirmar.type = "button";
+      confirmar.textContent = "✅ Confirmar novo horário";
+      confirmar.onclick = async () => {
+        if (!confirm(`A cliente confirmou ${proposta.data.split("-").reverse().join("/")} às ${proposta.horario}?`)) return;
+        confirmar.disabled = true;
+        try { await resolverPropostaReagendamento(ag, true); }
+        catch (e) { console.error("Erro ao confirmar reagendamento:", e); alert(e.message || "Não foi possível confirmar. Tente novamente."); confirmar.disabled = false; }
+      };
+      const cancelar = document.createElement("button");
+      cancelar.className = "btnSecundario";
+      cancelar.type = "button";
+      cancelar.textContent = "❌ Cancelar proposta";
+      cancelar.onclick = async () => {
+        if (!confirm("Cancelar a sugestão e liberar a vaga sugerida? O horário atual será mantido.")) return;
+        cancelar.disabled = true;
+        try { await resolverPropostaReagendamento(ag, false); }
+        catch (e) { console.error("Erro ao cancelar proposta:", e); alert("Não foi possível cancelar a proposta. Tente novamente."); cancelar.disabled = false; }
+      };
+      acoes.append(confirmar, cancelar);
+      card.append(titulo, contato, original, sugerido, estado, acoes);
+      listaPendentes.appendChild(card);
+    });
+    if (abrirSeExistirem) modalPendentes.style.display = "flex";
+  } catch (e) {
+    console.error("Erro ao carregar propostas de reagendamento:", e);
+    if (abrirSeExistirem) alert("Não foi possível carregar as propostas pendentes.");
+  }
+}
+
+btnPendentes.addEventListener("click", () => verificarReagendamentosPendentes(true));
+document.getElementById("fecharReagendamentosPendentes").addEventListener("click", () => { modalPendentes.style.display = "none"; });
+window.addEventListener("click", (e) => { if (e.target === modalPendentes) modalPendentes.style.display = "none"; });
+
+const modalListaEspera = document.getElementById("modalListaEspera");
+const listaEsperaAdmin = document.getElementById("listaEsperaAdmin");
+async function carregarListaEspera() {
+  listaEsperaAdmin.innerHTML = '<p class="sinal-vazio">Carregando preferências...</p>';
+  modalListaEspera.style.display = "flex";
+  try {
+    const snapshot = await getDocs(collection(db, "listaEspera"));
+    const pedidos = snapshot.docs
+      .map((item) => ({ id: item.id, ...item.data() }))
+      .filter((item) => item.status === "aguardando")
+      .sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
+    listaEsperaAdmin.innerHTML = "";
+    if (!pedidos.length) {
+      listaEsperaAdmin.innerHTML = '<p class="sinal-vazio">Nenhuma preferência aguardando atendimento.</p>';
+      return;
+    }
+    pedidos.forEach((pedido) => {
+      const card = document.createElement("article");
+      card.className = "sinal-card lista-espera-card";
+      const titulo = document.createElement("strong");
+      titulo.className = "sinal-nome";
+      titulo.textContent = pedido.nome || "Cliente";
+      const info = document.createElement("div");
+      info.className = "sinal-info";
+      const data = pedido.dataPreferida ? pedido.dataPreferida.split("-").reverse().join("/") : "Sem data específica";
+      const hora = pedido.horarioPreferido || "Sem horário específico";
+      info.textContent = `Contato: ${pedido.telefone || "não informado"} · Preferência: ${data} · ${hora} · ${pedido.periodoPreferido || "qualquer período"}`;
+      const procedimento = document.createElement("p");
+      procedimento.textContent = `Serviços/combos: ${pedido.procedimento || "não informado"}`;
+      const detalhes = document.createElement("p");
+      detalhes.textContent = pedido.detalhes || "Sem observações adicionais.";
+      const acoes = document.createElement("div");
+      acoes.className = "lista-espera-acoes";
+      const whatsapp = document.createElement("button");
+      whatsapp.type = "button";
+      whatsapp.className = "btnPrimario";
+      whatsapp.textContent = "Conversar no WhatsApp";
+      whatsapp.onclick = () => {
+        const numeros = String(pedido.telefone || "").replace(/\D/g, "");
+        if (!numeros) return alert("Esta cliente não informou um telefone.");
+        const destino = numeros.startsWith("55") ? numeros : `55${numeros}`;
+        const mensagem = `Oi, ${pedido.nome || "tudo bem"}! Vi sua preferência de horário para ${pedido.procedimento || "o atendimento"}. Vou verificar as opções e já retorno. 💕`;
+        window.open(`https://wa.me/${destino}?text=${encodeURIComponent(mensagem)}`, "_blank", "noopener");
+      };
+      const concluir = document.createElement("button");
+      concluir.type = "button";
+      concluir.className = "btnSecundario";
+      concluir.textContent = "Marcar como resolvido";
+      concluir.onclick = async () => {
+        concluir.disabled = true;
+        try {
+          await updateDoc(doc(db, "listaEspera", pedido.id), { status: "resolvido", resolvidoEm: new Date().toISOString() });
+          await carregarListaEspera();
+        } catch (erro) {
+          console.error("Não foi possível atualizar a lista de espera:", erro);
+          alert("Não foi possível marcar este pedido como resolvido.");
+          concluir.disabled = false;
+        }
+      };
+      acoes.append(whatsapp, concluir);
+      card.append(titulo, info, procedimento, detalhes, acoes);
+      listaEsperaAdmin.appendChild(card);
+    });
+  } catch (erro) {
+    console.error("Não foi possível carregar a lista de espera:", erro);
+    listaEsperaAdmin.innerHTML = '<p class="sinal-vazio">Não foi possível carregar os pedidos. Verifique as regras do Firestore.</p>';
+  }
+}
+document.getElementById("btnListaEspera").addEventListener("click", carregarListaEspera);
+document.getElementById("fecharListaEspera").addEventListener("click", () => { modalListaEspera.style.display = "none"; });
+window.addEventListener("click", (evento) => { if (evento.target === modalListaEspera) modalListaEspera.style.display = "none"; });
+
+const modalSolicitacoesCliente = document.getElementById("modalSolicitacoesCliente");
+const listaSolicitacoesCliente = document.getElementById("listaSolicitacoesCliente");
+async function carregarSolicitacoesCliente() {
+  modalSolicitacoesCliente.style.display = "flex";
+  listaSolicitacoesCliente.innerHTML = '<p class="sinal-vazio">Carregando solicitações...</p>';
+  try {
+    const snapshot = await getDocs(collection(db, "solicitacoesCliente"));
+    const pedidos = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+      .filter((item) => item.status === "aguardando")
+      .sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
+    listaSolicitacoesCliente.innerHTML = "";
+    if (!pedidos.length) {
+      listaSolicitacoesCliente.innerHTML = '<p class="sinal-vazio">Nenhuma solicitação pendente.</p>';
+      return;
+    }
+    pedidos.forEach((pedido) => {
+      const card = document.createElement("article");
+      card.className = "sinal-card lista-espera-card";
+      const nome = document.createElement("strong");
+      nome.className = "sinal-nome";
+      nome.textContent = pedido.nome || "Cliente";
+      const info = document.createElement("div");
+      info.className = "sinal-info";
+      const tipo = pedido.tipo === "cancelamento" ? "Cancelamento" : pedido.tipo === "reagendamento" ? "Reagendamento" : "Outro assunto";
+      info.textContent = `${tipo} · Telefone: ${pedido.telefone || "não informado"} · Atendimento atual: ${pedido.dataAtual || "não informado"}${pedido.dataDesejada ? ` · Nova preferência: ${pedido.dataDesejada} às ${pedido.horarioDesejado || "a combinar"}` : ""}`;
+      const mensagem = document.createElement("p");
+      mensagem.textContent = pedido.mensagem || "Sem mensagem adicional.";
+      const acoes = document.createElement("div");
+      acoes.className = "lista-espera-acoes";
+      const whatsapp = document.createElement("button");
+      whatsapp.className = "btnPrimario";
+      whatsapp.type = "button";
+      whatsapp.textContent = "Responder no WhatsApp";
+      whatsapp.onclick = () => {
+        const numeros = String(pedido.telefone || "").replace(/\D/g, "");
+        if (numeros.length < 10) return alert("O telefone informado não é válido.");
+        const destino = numeros.startsWith("55") ? numeros : `55${numeros}`;
+        const texto = `Olá, ${pedido.nome || "tudo bem"}! Vi sua solicitação de ${tipo.toLowerCase()} enviada pelo site. Vou te ajudar com isso. 💕`;
+        window.open(`https://wa.me/${destino}?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
+      };
+      const resolver = document.createElement("button");
+      resolver.className = "btnSecundario";
+      resolver.type = "button";
+      resolver.textContent = "Marcar como resolvida";
+      resolver.onclick = async () => {
+        if (!confirm("Confirma que esta solicitação já foi tratada?")) return;
+        resolver.disabled = true;
+        try {
+          await updateDoc(doc(db, "solicitacoesCliente", pedido.id), { status: "resolvido", resolvidoEm: new Date().toISOString() });
+          await carregarSolicitacoesCliente();
+        } catch (erro) {
+          console.error("Não foi possível atualizar a solicitação:", erro);
+          alert("Não foi possível marcar como resolvida.");
+          resolver.disabled = false;
+        }
+      };
+      acoes.append(whatsapp, resolver);
+      card.append(nome, info, mensagem, acoes);
+      listaSolicitacoesCliente.appendChild(card);
+    });
+  } catch (erro) {
+    console.error("Não foi possível carregar as solicitações:", erro);
+    listaSolicitacoesCliente.innerHTML = '<p class="sinal-vazio">Falha ao carregar. Confira as regras do Firestore.</p>';
+  }
+}
+document.getElementById("btnSolicitacoesCliente").addEventListener("click", carregarSolicitacoesCliente);
+document.getElementById("fecharSolicitacoesCliente").addEventListener("click", () => { modalSolicitacoesCliente.style.display = "none"; });
+window.addEventListener("click", (evento) => { if (evento.target === modalSolicitacoesCliente) modalSolicitacoesCliente.style.display = "none"; });
+
+const modalFeedbacksCliente = document.getElementById("modalFeedbacksCliente");
+const listaFeedbacksCliente = document.getElementById("listaFeedbacksCliente");
+async function carregarFeedbacksCliente() {
+  modalFeedbacksCliente.style.display = "flex";
+  listaFeedbacksCliente.innerHTML = '<p class="sinal-vazio">Carregando feedbacks...</p>';
+  try {
+    const snapshot = await getDocs(collection(db, "feedbacks"));
+    const feedbacks = snapshot.docs.map((item) => ({ id: item.id, ...item.data() }))
+      .sort((a, b) => String(b.criadoEm || "").localeCompare(String(a.criadoEm || "")));
+    listaFeedbacksCliente.innerHTML = "";
+    if (!feedbacks.length) {
+      listaFeedbacksCliente.innerHTML = '<p class="sinal-vazio">Nenhum feedback recebido ainda.</p>';
+      return;
+    }
+    feedbacks.forEach((feedback) => {
+      const card = document.createElement("article");
+      card.className = "sinal-card lista-espera-card";
+      const titulo = document.createElement("strong");
+      titulo.className = "sinal-nome";
+      titulo.textContent = `${feedback.nome || "Cliente"} · ${"★".repeat(Number(feedback.avaliacao) || 0)}${"☆".repeat(5 - (Number(feedback.avaliacao) || 0))}`;
+      const texto = document.createElement("p");
+      texto.textContent = feedback.mensagem || "Sem comentário.";
+      const info = document.createElement("div");
+      info.className = "sinal-info";
+      info.textContent = `${feedback.dataAtendimento || "Data não informada"} · ${feedback.publicado ? "Visível no site" : "Privado"}`;
+      const acoes = document.createElement("div");
+      acoes.className = "lista-espera-acoes";
+      const publicar = document.createElement("button");
+      publicar.className = feedback.publicado ? "btnSecundario" : "btnPrimario";
+      publicar.type = "button";
+      publicar.textContent = feedback.publicado ? "Retirar do site" : "Aprovar e publicar";
+      publicar.onclick = async () => {
+        publicar.disabled = true;
+        try {
+          await updateDoc(doc(db, "feedbacks", feedback.id), {
+            publicado: !feedback.publicado,
+            status: feedback.publicado ? "aguardando" : "publicado"
+          });
+          await carregarFeedbacksCliente();
+        } catch (erro) {
+          console.error("Não foi possível atualizar a publicação do feedback:", erro);
+          alert("Não foi possível atualizar este feedback.");
+          publicar.disabled = false;
+        }
+      };
+      acoes.appendChild(publicar);
+      card.append(titulo, texto, info, acoes);
+      listaFeedbacksCliente.appendChild(card);
+    });
+  } catch (erro) {
+    console.error("Não foi possível carregar os feedbacks:", erro);
+    listaFeedbacksCliente.innerHTML = '<p class="sinal-vazio">Falha ao carregar. Confira as regras do Firestore.</p>';
+  }
+}
+document.getElementById("btnFeedbacksCliente").addEventListener("click", carregarFeedbacksCliente);
+document.getElementById("fecharFeedbacksCliente").addEventListener("click", () => { modalFeedbacksCliente.style.display = "none"; });
+window.addEventListener("click", (evento) => { if (evento.target === modalFeedbacksCliente) modalFeedbacksCliente.style.display = "none"; });
+
+const descontoRapido = document.getElementById("descontoRapido");
+const valorDescontoRapido = document.getElementById("valorDescontoRapido");
+document.getElementById("acaoDesconto").onclick = () => {
+  acoesModalLista.style.display = "none";
+  descontoRapido.hidden = false;
+  valorDescontoRapido.value = agendamentoSelecionado?.desconto || "";
+  valorDescontoRapido.max = agendamentoSelecionado?.valorBruto || "";
+  valorDescontoRapido.focus();
+};
+document.getElementById("cancelarDescontoRapido").onclick = () => {
+  descontoRapido.hidden = true;
+  acoesModalLista.style.display = "flex";
+};
+document.getElementById("salvarDescontoRapido").onclick = async () => {
+  if (!agendamentoSelecionado) return;
+  const desconto = Number(valorDescontoRapido.value || 0);
+  if (!Number.isFinite(desconto) || desconto < 0 || desconto > agendamentoSelecionado.valorBruto) {
+    return alert(`Informe um desconto entre R$ 0,00 e ${brl(agendamentoSelecionado.valorBruto)}.`);
+  }
+  const btnSalvarDesconto = document.getElementById("salvarDescontoRapido");
+  btnSalvarDesconto.disabled = true;
+  try {
+    await updateDoc(doc(db, "agendamentos", agendamentoSelecionado.id), { desconto });
+    descontoRapido.hidden = true;
+    modalAcoes.style.display = "none";
+    await carregarAgendamentos();
+  } catch (error) {
+    console.error("Não foi possível aplicar o desconto:", error);
+    alert("Não foi possível salvar o desconto. Tente novamente.");
+  } finally {
+    btnSalvarDesconto.disabled = false;
+  }
+};
+
 // --- Editar --- //
 document.getElementById("acaoEditar").onclick = async () => {
+  if (agendamentoSelecionado?.reagendamentoPendente) return alert("Resolva a proposta pendente antes de editar este agendamento.");
   modalAcoes.style.display = "none";
   const docSnap = await getDocs(collection(db, "agendamentos"));
   const ag = docSnap.docs.find(d => d.id === agendamentoSelecionado.id)?.data();
@@ -1666,6 +2676,9 @@ document.getElementById("acaoEditar").onclick = async () => {
   document.getElementById("periodoManual").value = ag.periodo || "Manhã";
   document.getElementById("horaManual").value = ag.horario || "";
   document.getElementById("procedimentoManual").value = ag.procedimento || "";
+  document.getElementById("tempoMedioManual").textContent = (Number(ag.tempoMedioMinutos) || tempoMedioDoProcedimento(ag.procedimento)) > 0
+    ? `Tempo médio: ${formatarTempoMedio(Number(ag.tempoMedioMinutos) || tempoMedioDoProcedimento(ag.procedimento))}`
+    : "Tempo médio não cadastrado no catálogo";
   document.getElementById("pagamentoManual").value = ag.formaPagamento || "PIX";
   document.getElementById("valorManual").value = ag.valor || "";
   document.getElementById("descontoManual").value = ag.desconto || "";
@@ -1685,15 +2698,19 @@ document.getElementById("acaoEditar").onclick = async () => {
     const desconto = parseFloat(document.getElementById("descontoManual").value || 0);
     const obs = document.getElementById("obsManual").value.trim();
 
-    await updateDoc(doc(db, "agendamentos", agendamentoSelecionado.id), {
-      nome, telefone, data, periodo, horario, procedimento, formaPagamento, valor, desconto, observacoes: obs
-    });
+    const atualizacao = {
+      nome, telefone, telefoneBusca: telefone.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, ""),
+      data, periodo, horario, procedimento, formaPagamento, valor, desconto, observacoes: obs,
+      tempoMedioMinutos: tempoMedioDoProcedimento(procedimento)
+    };
 
     // Atualiza a coleção pública de horários ocupados caso a data/horário tenham mudado
     if (ag.data !== data || ag.horario !== horario) {
       await removerHorarioOcupado(ag.data, ag.horario);
-      await adicionarHorarioOcupado(data, horario);
+      const slotId = await adicionarHorarioOcupado(data, horario, agendamentoSelecionado.id);
+      if (slotId) atualizacao.slotId = slotId;
     }
+    await updateDoc(doc(db, "agendamentos", agendamentoSelecionado.id), atualizacao);
 
     alert("✅ Atendimento atualizado!");
     document.getElementById("modalNovo").style.display = "none";
@@ -1752,6 +2769,7 @@ document.getElementById("acaoAgradecer").onclick = () => {
 
 // --- Excluir --- //
 document.getElementById("acaoExcluir").onclick = async () => {
+  if (agendamentoSelecionado?.reagendamentoPendente) return alert("Resolva ou cancele a proposta pendente antes de excluir este agendamento.");
   if (!confirm("Tem certeza que deseja excluir este atendimento?")) return;
   await deleteDoc(doc(db, "agendamentos", agendamentoSelecionado.id));
   await removerHorarioOcupado(agendamentoSelecionado.data, agendamentoSelecionado.horario);
@@ -1773,7 +2791,10 @@ btnApagarTudo.addEventListener("click", async () => {
 */
 
 // --- Novo Atendimento --- //
-btnNovoAtendimento.addEventListener("click", () => {
+btnNovoAtendimento.addEventListener("click", async () => {
+  try { await carregarCatalogoPrecosAdmin(); }
+  catch (e) { console.error("Não foi possível sincronizar o catálogo de preços:", e); }
+  document.getElementById("tempoMedioManual").textContent = "Selecione um procedimento para ver o tempo médio.";
   document.getElementById("modalNovo").style.display = "flex";
 });
 
@@ -1793,17 +2814,19 @@ async function salvarNovoAtendimento() {
   const valor = parseFloat(document.getElementById("valorManual").value || 0);
   const desconto = parseFloat(document.getElementById("descontoManual").value || 0);
   const obs = document.getElementById("obsManual").value.trim();
+  const tempoMedioMinutos = tempoMedioDoProcedimento(procedimento);
 
   if (!nome || !data || !horario || !procedimento) {
     alert("Preencha todos os campos obrigatórios!");
     return;
   }
 
-  await addDoc(collection(db, "agendamentos"), {
-    nome, telefone, data, periodo, horario, procedimento,
-    formaPagamento, valor, desconto, observacoes: obs, concluido: false
+  const agendamentoRef = await addDoc(collection(db, "agendamentos"), {
+    nome, telefone, telefoneBusca: telefone.replace(/\D/g, "").replace(/^55(?=\d{10,11}$)/, ""), data, periodo, horario, procedimento,
+    formaPagamento, valor, desconto, observacoes: obs, tempoMedioMinutos, concluido: false
   });
-  await adicionarHorarioOcupado(data, horario);
+  const slotId = await adicionarHorarioOcupado(data, horario, agendamentoRef.id);
+  if (slotId) await updateDoc(doc(db, "agendamentos", agendamentoRef.id), { slotId });
 
   alert("✅ Atendimento adicionado!");
   document.getElementById("modalNovo").style.display = "none";
@@ -1827,7 +2850,7 @@ async function exportarPDF(mes) {
 
   querySnapshot.forEach(docSnap => {
     const ag = docSnap.data();
-    if (ag.data?.startsWith(mes)) {
+    if (!ag.canceladoCliente && ag.data?.startsWith(mes)) {
       const valorFinal = Math.max(
         Number(ag.valor || 0) - Number(ag.desconto || 0),
         0
@@ -1841,7 +2864,7 @@ async function exportarPDF(mes) {
         ag.data.split("-").reverse().join("/"),
         ag.procedimento || "-",
         ag.formaPagamento || "-",
-        `R$ ${valorFinal.toFixed(2)}`
+        `${brl(valorFinal)}`
       ]);
     }
   });
@@ -1862,7 +2885,7 @@ async function exportarPDF(mes) {
         d.data.split("-").reverse().join("/"),
         d.descricao || "-",
         d.formaPagamento || "-",
-        `R$ ${valor.toFixed(2)}`
+        `${brl(valor)}`
       ]);
     }
   });
@@ -1873,47 +2896,65 @@ async function exportarPDF(mes) {
   }
 
   // Página 1 — Agendamentos
-  pdf.text(`Relatório de Agendamentos - ${mes}`, 14, 15);
+  pdf.setTextColor(38, 59, 52);
+  pdf.setFont("helvetica", "bold");
+pdf.setFontSize(16);
+  pdf.text(`Agendamentos · ${mes}`, 14, 16);
+pdf.setFont("helvetica", "normal");
+pdf.setFontSize(10);
   if (linhas.length) {
     pdf.autoTable({
       startY: 25,
       head: [["Nome", "Telefone", "Data", "Procedimento", "Pagamento", "Valor"]],
       body: linhas,
-      styles: { fontSize: 9 }
+      theme: "striped",
+      styles: { fontSize: 9, cellPadding: 3, lineColor: [231, 226, 217], lineWidth: 0.1 },
+      headStyles: { fillColor: [38, 59, 52], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [249, 248, 244] },
+      margin: { left: 14, right: 14 }
     });
   } else {
     pdf.setFontSize(10);
     pdf.text("Nenhum atendimento neste mês.", 14, 30);
   }
   const yAgendamentos = pdf.lastAutoTable?.finalY || 40;
-  pdf.text(`Total bruto (atendimentos): R$ ${totalBruto.toFixed(2)}`, 14, yAgendamentos + 10);
+  pdf.text(`Total bruto (atendimentos): ${brl(totalBruto)}`, 14, yAgendamentos + 10);
 
   // Página 2 — Despesas (nova planilha/página do relatório)
   pdf.addPage();
-  pdf.text(`Despesas - ${mes}`, 14, 15);
+  pdf.setTextColor(38, 59, 52);
+  pdf.setFont("helvetica", "bold");
+pdf.setFontSize(16);
+  pdf.text(`Despesas · ${mes}`, 14, 16);
+pdf.setFont("helvetica", "normal");
+pdf.setFontSize(10);
   if (linhasDespesas.length) {
     pdf.autoTable({
       startY: 25,
       head: [["Despesa", "Data", "Descrição", "Pagamento", "Valor"]],
       body: linhasDespesas,
-      styles: { fontSize: 9 }
+      theme: "striped",
+      styles: { fontSize: 9, cellPadding: 3, lineColor: [231, 226, 217], lineWidth: 0.1 },
+      headStyles: { fillColor: [38, 59, 52], textColor: 255, fontStyle: "bold" },
+      alternateRowStyles: { fillColor: [249, 248, 244] },
+      margin: { left: 14, right: 14 }
     });
   } else {
     pdf.setFontSize(10);
     pdf.text("Nenhuma despesa registrada neste mês.", 14, 30);
   }
   const yDespesas = pdf.lastAutoTable?.finalY || 40;
-  pdf.text(`Total de despesas: R$ ${totalDespesas.toFixed(2)}`, 14, yDespesas + 10);
+  pdf.text(`Total de despesas: ${brl(totalDespesas)}`, 14, yDespesas + 10);
 
   // --- Resumo Financeiro final (já descontando as despesas) --- //
   const totalLiquido = totalBruto - totalDespesas;
   pdf.setFontSize(12);
   pdf.text("Resumo Financeiro", 14, yDespesas + 25);
   pdf.setFontSize(10);
-  pdf.text(`Total bruto: R$ ${totalBruto.toFixed(2)}`, 14, yDespesas + 33);
-  pdf.text(`Total de despesas: R$ ${totalDespesas.toFixed(2)}`, 14, yDespesas + 40);
+  pdf.text(`Total bruto: ${brl(totalBruto)}`, 14, yDespesas + 33);
+  pdf.text(`Total de despesas: ${brl(totalDespesas)}`, 14, yDespesas + 40);
   pdf.setFontSize(11);
-  pdf.text(`Total líquido: R$ ${totalLiquido.toFixed(2)}`, 14, yDespesas + 49);
+  pdf.text(`Total líquido: ${brl(totalLiquido)}`, 14, yDespesas + 49);
 
   pdf.save(`agendamentos-${mes}.pdf`);
   return true;
@@ -1997,3 +3038,13 @@ Solicitação enviada pelo Painel Administrativo.
 
   modalSenha.style.display = "none";
 };
+
+
+
+
+
+
+
+
+
+

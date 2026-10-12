@@ -39,48 +39,65 @@
             <li><a href="#portfolio">Portfólio</a></li>
             <li><a href="#servicos">Serviços</a></li>
             <li><a href="#chat" class="nav-cta">Agendamento</a></li>
+            <li><a href="#area-cliente">Área da cliente</a></li>
           </ul>
         </nav>
       </div>
     </header>
 
-    <!-- Hero -->
-    <section id="home" class="hero">
-      <div class="container">
-
-        <!-- Texto de boas-vindas -->
-        <div class="hero-overlay">
-        <h2>Mais que Maquiagem, Uma Experiência</h2>
-        <span class="hero-eyebrow">
-        Permita-se viver um momento único de cuidado, autoestima e transformação.
-        </span>
+    <!-- Agendamento -->
+    <section id="home" class="chat-section">
+      <div id="chat" class="chat-container">
+        <div class="chat-header">
+          <span class="section-label">Seu próximo momento especial</span>
+          <h2><i class="fa-solid fa-comments chat-icon" aria-hidden="true"></i> Agendamento Online</h2>
+          <p>Escolha seu serviço e encontre o melhor horário para você.</p>
+        </div>
+        <div id="chatMessages" class="chat-messages"></div>
+        <div class="chat-input">
+          <input type="text" id="userInput" placeholder="Digite aqui..." title="Pressione Enter para enviar" aria-label="Digite sua mensagem. Pressione Enter para enviar." />
+          <button id="sendBtn" aria-label="Enviar mensagem"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
       </div>
-
-      <!-- Bot de Atendimento -->
-      <section id="chat" class="chat-section">
-        <div class="chat-container">
-          <!-- Título e descrição -->
-          <div class="chat-header">
-            <h2><i class="fa-solid fa-comments chat-icon" aria-hidden="true"></i> Agendamento Online</h2>
-            <p>
-              Use nosso autoatendimento para agendar seu horário de maquiagem de
-              forma rápida e prática.
-            </p>
-          </div>
-
-          <!-- Área de mensagens -->
-          <div id="chatMessages" class="chat-messages"></div>
-
-          <!-- Input do usuário -->
-          <div class="chat-input">
-            <input type="text" id="userInput" placeholder="Digite aqui..." />
-            <button id="sendBtn"><i class="fa-solid fa-paper-plane"></i></button>
-          </div>
-        </div>
-      </section>
     </section>
-
+    <div id="clientAreaModal" class="client-area-modal" role="dialog" aria-modal="true" aria-labelledby="clientAreaTitle" hidden>
+    <section id="area-cliente" class="client-area-section">
+      <div class="client-area-shell">
+        <div class="client-area-card">
+          <button id="clientAreaClose" class="client-area-close" type="button" aria-label="Fechar área da cliente"><i class="fa-solid fa-xmark"></i></button>
+          <div class="client-area-heading">
+            <span class="section-label">SEU ESPAÇO EXCLUSIVO</span>
+            <h2 id="clientAreaTitle">Olá, <span id="clientGreetingName">seja bem-vinda</span>!</h2>
+            <p>Esta é a sua área da cliente. Consulte seus atendimentos e envie pedidos para a Ana.</p>
+          </div>
+          <div class="client-area-tabs" role="tablist" aria-label="Opções da área da cliente">
+            <button id="clientAppointmentsTab" class="is-active" type="button" role="tab" aria-selected="true">Meus agendamentos</button>
+            <button id="clientFeedbackTab" type="button" role="tab" aria-selected="false">Enviar feedback</button>
+          </div>
+          <div id="clientAppointmentsPanel">
+            <form id="clientLookupForm" class="client-access-form">
+              <label>Seu nome<input name="nome" type="text" autocomplete="name" maxlength="120" required placeholder="Nome usado no agendamento" /></label>
+              <label>Telefone com DDD<input name="telefone" type="tel" autocomplete="tel" inputmode="tel" maxlength="25" required placeholder="(00) 00000-0000" /></label>
+              <button class="client-primary-button client-full-width" type="submit">Consultar agendamentos</button>
+              <p id="clientLookupStatus" class="client-status client-full-width" role="status" aria-live="polite"></p>
+            </form>
+            <div id="clientAppointmentsList" class="client-appointments" hidden></div>
+          </div>
+          <form id="clientFeedbackForm" class="client-access-form" hidden>
+            <label>Seu nome<input name="nome" type="text" autocomplete="name" maxlength="120" required placeholder="Como gostaria de ser identificada?" /></label>
+            <label>Data do atendimento<input name="dataAtendimento" type="date" /></label>
+            <label>Sua avaliação
+              <select name="avaliacao" required><option value="5">★★★★★ — Amei</option><option value="4">★★★★☆ — Gostei muito</option><option value="3">★★★☆☆ — Foi bom</option><option value="2">★★☆☆☆ — Pode melhorar</option><option value="1">★☆☆☆☆ — Não foi como esperava</option></select>
+            </label>
+            <label class="client-full-width">Conte como foi sua experiência<textarea name="mensagem" maxlength="1000" required placeholder="Seu feedback ajuda a Ana a cuidar cada vez melhor de cada detalhe"></textarea></label>
+            <button class="client-primary-button client-full-width" type="submit">Enviar feedback</button>
+            <p class="client-access-note client-full-width">Seu feedback será analisado pela Ana antes de aparecer publicamente no site.</p>
+            <p id="clientFeedbackStatus" class="client-status client-full-width" role="status" aria-live="polite"></p>
+          </form>
+        </div>
+      </div>
+    </section>
+    </div>
 <!-- Quem sou -->
 <section id="quem" class="quem">
   <div class="container sobre-flex">
@@ -300,6 +317,7 @@
             <span>- Fernanda R.</span>
           </div>
         </div>
+        <div id="depoimentosAprovados" class="depoimentos-texto depoimentos-clientes-aprovados" aria-live="polite"></div>
       </div>
     </section>
 
@@ -346,66 +364,66 @@
         <span class="section-label">Serviços e Preços</span>
         <h2>Nossos Serviços</h2>
         <div class="servicos-grid">
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="maquiagem-social">
             <img src="imgs/social.jpg" alt="Maquiagem Social" title="Maquiagem Social" />
             <h3>Maquiagem Social</h3>
             <p>
               Ideal para festas e eventos, garantindo um visual elegante e
               duradouro.
             </p>
-            <p class="servico-preco">R$ 150,00</p>
+            <div class="servico-price-row"><span>Valor</span><strong>R$ 150,00</strong></div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="brow-lamination">
             <img src="imgs/brow.jpg" alt="Brow Lamination" title="Brow Lamination" />
             <h3>Brow Lamination</h3>
             <p>Alinhamento e fixação dos fios para sobrancelhas impecáveis.</p>
-            <p class="servico-preco">R$ 120,00</p>
+            <div class="servico-price-row"><span>Valor</span><strong>R$ 120,00</strong></div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="curso-automaquiagem">
             <img src="imgs/automaquiagem.jpeg" alt="Curso | AutoMaquiagem" title="Curso | AutoMaquiagem" />
             <div class="portfolio-desc">
               <h3>Curso | AutoMaquiagem</h3>
               <p>
                 Aprenda a criar sua própria maquiagem com técnicas simples, práticas e fáceis de reproduzir no dia a dia, valorizando sua beleza e sua autoestima.
               </p>
-              <p class="servico-preco">R$ 300,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 300,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="baby-liss">
             <img src="imgs/baby liss.jpg" alt="Baby Liss" title="Baby Liss" />
             <div class="portfolio-desc">
               <h3>Baby Liss</h3>
               <p>Cachos definidos ou ondas naturais para um look moderno.</p>
-              <p class="servico-preco">R$ 60,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 60,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="semipreso-romantico">
             <img src="imgs/preso-romantico.jpg" alt="Semipreso Romântico" title="Semipreso Romântico" />
             <div class="portfolio-desc">
               <h3>Semipreso Romântico</h3>
               <p>
                 Penteado delicado e elegante, perfeito para ocasiões especiais.
               </p>
-              <p class="servico-preco">R$ 90,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 90,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="coque-express">
             <img src="imgs/coque express.jpg" alt="Coque Express" title="Coque Express" />
             <div class="portfolio-desc">
               <h3>Coque Express</h3>
               <p>
                 Praticidade e sofisticação em um penteado versátil e elegante.
               </p>
-              <p class="servico-preco">R$ 120,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 120,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="brow-lamination-henna">
             <img src="imgs/brow-henna.jpg" alt="Brow Lamination + Henna" title="Brow Lamination + Henna" />
             <div class="portfolio-desc">
               <h3>Brow Lamination + Henna</h3>
@@ -413,40 +431,40 @@
                 Combinação perfeita para sobrancelhas definidas e com acabamento
                 natural.
               </p>
-              <p class="servico-preco">R$ 135,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 135,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="rabo-classico">
             <img src="imgs/classico.jpg" alt="Rabo Clássico" title="Rabo Clássico" />
             <div class="portfolio-desc">
               <h3>Rabo Clássico</h3>
               <p>Penteado atemporal que une charme e praticidade.</p>
-              <p class="servico-preco">R$ 80,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 80,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="semipreso-com-trancas">
             <img src="imgs/preso tranças.jpg" alt="Semipreso com Tranças" title="Semipreso com Tranças" />
             <div class="portfolio-desc">
               <h3>Semipreso com Tranças</h3>
               <p>Um toque romântico e moderno para realçar seu visual.</p>
-              <p class="servico-preco">R$ 100,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 100,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="lash-lift">
             <img src="imgs/lash lift.jpg" alt="Lash Lift" title="Lash Lift" />
             <div class="portfolio-desc">
               <h3>Lash Lift</h3>
               <p>
                 Curvatura natural e duradoura para realçar ainda mais seu olhar.
               </p>
-              <p class="servico-preco">R$ 120,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 120,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="design-personalizado">
             <img src="imgs/design.jpg" alt="Design Personalizado" title="Design Personalizado" />
             <div class="portfolio-desc">
               <h3>Design Personalizado</h3>
@@ -454,11 +472,11 @@
                 Beleza sob medida, com técnicas exclusivas para destacar seus
                 traços únicos.
               </p>
-              <p class="servico-preco">R$ 35,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 35,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="design-personalizado-tintura">
             <img src="imgs/design-tintura.jpg" alt="Design Personalizado + Tintura" title="Design Personalizado + Tintura" />
             <div class="portfolio-desc">
               <h3>Design Personalizado + Tintura</h3>
@@ -466,11 +484,11 @@
                 Beleza sob medida, com técnicas exclusivas para destacar seus
                 traços únicos.
               </p>
-              <p class="servico-preco">R$ 45,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 45,00</strong></div>
             </div>
           </div>
 
-            <div class="polaroid">
+            <div class="polaroid" data-catalog-id="design-personalizado-henna">
             <img src="imgs/design-henna.JPEG" alt="Design Personalizado + Henna" title="Design Personalizado + Henna" />
             <div class="portfolio-desc">
               <h3>Design Personalizado + Henna</h3>
@@ -478,11 +496,11 @@
                 Definição, simetria e preenchimento natural com henna para realçar o
                 formato das sobrancelhas e proporcionar um visual marcante e harmonioso.
               </p>
-              <p class="servico-preco">R$ 45,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 45,00</strong></div>
             </div>
           </div>
 
-          <div class="polaroid">
+          <div class="polaroid" data-catalog-id="depilacao-de-buco">
             <img src="imgs/buço.jpg" alt="Depilação de buço profissional" title="Depilação de buço profissional" />
             <div class="portfolio-desc">
               <h3>Depilação de Buço</h3>
@@ -491,7 +509,7 @@
                 Nossa técnica garante conforto, praticidade e resultado imediato
                 para realçar a beleza do seu rosto.
               </p>
-              <p class="servico-preco">R$ 15,00</p>
+              <div class="servico-price-row"><span>Valor</span><strong>R$ 15,00</strong></div>
             </div>
           </div>
         </div>
@@ -725,3 +743,5 @@
     <script type="module" src="script.js"></script>
   </body>
 </html>
+
+

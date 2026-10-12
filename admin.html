@@ -23,75 +23,105 @@
   <!-- Tela de Login -->
   <div class="login-container" id="loginContainer">
     <div class="login-box">
-      <h2>Login Administrativo</h2>
+      <span class="login-kicker">ANA LUIZA FERNANDES · MAKEUP</span>
+      <h2>Acesse seu painel</h2>
       <input type="text" id="usuario" placeholder="Usuário" autocomplete="username" />
       <input type="password" id="senha" placeholder="Senha" autocomplete="current-password" />
       <button id="btnLogin">Entrar</button>
       <p id="erroLogin" style="color: red; display: none;">Usuário ou senha incorretos.</p>
 
             <button id="btnEsqueciSenha" class="btnSecundario" style="margin-top: 10px;">🔑 Esqueci / Alterar Senha</button>
-      <a 
-  href="https://daltonneres.github.io/dashboard-EMPRESAS/" 
-  target="_blank"
-  style="text-decoration: none;"
->
-  <button class="btnSecundario" style="margin-top: 10px; width: 100%;">
-    📊 Conhecer Dashboard Empresarial
-  </button>
-</a>
 
-<p style="font-size: 12px; color: #666; margin-top: 6px;">
-  Ideal para empresas que desejam controle financeiro e operacional.
-</p>
+      <a href="https://daltonneres.github.io/dashboard-EMPRESAS/" target="_blank" rel="noopener noreferrer" class="login-external">
+        <span class="login-external-icon"><i class="fa-solid fa-chart-line"></i></span>
+        <span><strong>Dashboard Empresarial</strong><small>Conheça a solução para gestão financeira e operacional</small></span>
+        <i class="fa-solid fa-arrow-up-right-from-square login-external-arrow"></i>
+      </a>
     </div>
   </div>
 
   <!-- Painel Administrativo -->
   <div class="admin-container" id="adminContainer">
-    <div id="adminHeader" style="display: flex; justify-content: center; align-items: center; gap: 10px; margin-bottom: 20px;">
-      <button id="btnLogout" class="btnSecundario" aria-label="Sair do painel">📤 Sair</button>
-      <button id="btnNovoAtendimento" class="btnPrimario" aria-label="Adicionar novo atendimento">➕ Novo Atendimento</button>
-      <button id="btnFiltros" class="btnSecundario" aria-label="Abrir filtros de mês e dia">🔍 Filtros</button>
-      <button id="btnDisponibilidade" class="btnSecundario" aria-label="Editar disponibilidade de dias e horários">📅 Disponibilidade</button>
-      <button id="btnPagamentos" class="btnSecundario" aria-label="Configurar chave Pix e taxa de reserva">💳 Pagamentos</button>
-      <button id="btnSinais" class="btnSecundario" aria-label="Conferir pagamentos das taxas de reserva">💰 Sinais</button>
-      <button id="btnAniversarios" class="btnSecundario" aria-label="Ver aniversariantes do mês">🎂 Aniversários</button>
-      <button id="btnMeta" class="btnSecundario" aria-label="Meta mensal e gráficos">🎯 Meta</button>
-      <button id="btnExportar" class="btnSecundario" aria-label="Exportar agendamentos em PDF">📄 Exportar PDF</button>
-      <button id="btnApagarMes" class="btnPerigo" aria-label="Apagar agendamentos do mês">🗑️ Apagar mês</button>
-      <button id="btnNovaDespesa" class="btnPerigo" aria-label="Adicionar nova despesa">💸 Nova Despesa</button>
+    <div id="adminHeader">
+      <div class="toolbar-group toolbar-primary" data-label="Acesso rápido">
+        <button id="btnNovoAtendimento" class="btnPrimario" aria-label="Adicionar novo atendimento"><i class="fa-solid fa-plus"></i> Novo atendimento</button>
+        <button id="btnFiltros" class="btnSecundario" aria-label="Abrir filtros de mês e dia"><i class="fa-solid fa-sliders"></i> Filtros</button>
+        <button id="btnReagendamentosPendentes" class="btnSecundario" aria-label="Ver propostas de reagendamento pendentes"><i class="fa-solid fa-clock-rotate-left"></i> Pendentes</button>
+      </div>
+      <div class="toolbar-group" data-label="Rotina">
+        <button id="btnDisponibilidade" class="btnSecundario" aria-label="Editar disponibilidade de dias e horários"><i class="fa-regular fa-calendar"></i> Disponibilidade</button>
+        <button id="btnListaEspera" class="btnSecundario" aria-label="Ver preferências e lista de espera"><i class="fa-regular fa-clock"></i> Lista de espera</button>
+        <button id="btnSolicitacoesCliente" class="btnSecundario" aria-label="Ver solicitações de clientes"><i class="fa-regular fa-comments"></i> Solicitações</button>
+        <button id="btnFeedbacksCliente" class="btnSecundario" aria-label="Revisar feedbacks de clientes"><i class="fa-regular fa-star"></i> Feedbacks</button>
+        <button id="btnSinais" class="btnSecundario" aria-label="Conferir pagamentos das taxas de reserva"><i class="fa-solid fa-circle-dollar-to-slot"></i> Sinais</button>
+        <button id="btnAniversarios" class="btnSecundario" aria-label="Ver aniversariantes do mês"><i class="fa-solid fa-cake-candles"></i> Aniversários</button>
+      </div>
+      <div class="toolbar-group" data-label="Financeiro e relatórios">
+        <button id="btnValoresServicos" class="btnSecundario" aria-label="Gerenciar produtos, serviços e combos"><i class="fa-solid fa-tags"></i> Catálogo <span id="catalogoPendenciasBadge" class="catalogo-pendencias-badge" hidden></span></button>
+        <button id="btnPagamentos" class="btnSecundario" aria-label="Configurar chave Pix e taxa de reserva"><i class="fa-regular fa-credit-card"></i> Pagamentos</button>
+        <button id="btnMeta" class="btnSecundario" aria-label="Meta mensal e gráficos"><i class="fa-solid fa-chart-line"></i> Meta mensal</button>
+        <button id="btnExportar" class="btnSecundario" aria-label="Exportar agendamentos em PDF"><i class="fa-regular fa-file-pdf"></i> Exportar PDF</button>
+        
+      </div>
+      <div class="toolbar-group toolbar-account" data-label="Conta e ações críticas">
+        <button id="btnLogout" class="btnSecundario" aria-label="Sair do painel"><i class="fa-solid fa-arrow-right-from-bracket"></i> Sair</button>
+        <button id="btnApagarMes" class="btnPerigo" aria-label="Apagar agendamentos do mês"><i class="fa-regular fa-trash-can"></i> Apagar mês</button>
+      </div>
     </div>
     <div id="adminHeaderSpacer"></div>
 
     <p id="saudacao" class="saudacao"></p>
 
-    <h2 class="panel-title"><i class="fa-solid fa-calendar-check"></i> Agendamentos - Ana Makeup</h2>
+    <div class="admin-tabs" role="tablist" aria-label="Seções do painel">
+      <button id="tabAgendamentos" class="admin-tab is-active" type="button" role="tab" aria-selected="true" aria-controls="agendaPanel"><i class="fa-solid fa-calendar-check"></i> Agendamentos</button>
+      <button id="tabFinanceiro" class="admin-tab" type="button" role="tab" aria-selected="false" aria-controls="financeiroPanel"><i class="fa-solid fa-chart-pie"></i> Financeiro</button>
+    </div>
 
-    <table aria-label="Tabela de agendamentos">
+    <section id="agendaPanel" class="dashboard-panel" role="tabpanel" aria-labelledby="tabAgendamentos">
+    <h2 class="panel-title"><i class="fa-solid fa-calendar-check"></i> Agendamentos <span>Agenda e pagamentos</span><button id="btnOcultarValores" class="btn-privacidade-valores" type="button" aria-label="Ocultar valores dos agendamentos" aria-pressed="false" title="Ocultar valores"><i class="fa-regular fa-eye" aria-hidden="true"></i></button></h2>
+
+    <div class="table-scroll" role="region" aria-label="Agendamentos: use a rolagem horizontal para ver todas as colunas"><table aria-label="Tabela de agendamentos">
   <thead>
     <tr>
-      <th>Nome</th>
-      <th>Telefone</th>
-      <th>Aniversário</th>
-      <th>Data</th>
-      <th>Período</th>
-      <th>Horário</th>
+      <th>Cliente</th>
+      <th>Data e horário</th>
       <th>Procedimento</th>
-      <th>Forma de Pagamento</th>
-      <th>Valor (R$)</th>
-      <th>Desconto?</th>
-      <th>Valor Final (R$)</th>
-      <th>Sinal</th>
-      <th>Concluído</th>
+      <th>Pagamento</th>
+      <th>Valores</th>
+      <th>Status</th>
       <th>Ações</th>
     </tr>
   </thead>
       <tbody id="tabelaAgendamentos"></tbody>
-    </table>
+    </table></div>
+    </section>
 
-    <h2 class="panel-title"><i class="fa-solid fa-money-bill-wave"></i> Despesas</h2>
+    <section id="financeiroPanel" class="dashboard-panel" role="tabpanel" aria-labelledby="tabFinanceiro" hidden>
+    <div class="resumo">
+      <h3>Visão financeira do período <button id="btnOcultarValoresFinanceiro" class="btn-privacidade-valores" type="button" aria-label="Ocultar valores financeiros" aria-pressed="false" title="Ocultar valores"><i class="fa-regular fa-eye" aria-hidden="true"></i></button></h3>
+      <p class="summary-caption">Os valores acompanham o período selecionado nos filtros.</p>
+      <p id="totalAgendamentos">Total de agendamentos: 0</p>
+      <p id="valorTotal">Valor bruto (atendimentos): R$ 0,00</p>
+      <p id="valorDescontos">Descontos concedidos: R$ 0,00</p>
+      <p id="valorDespesas">Despesas: R$ 0,00</p>
+      <p id="valorLiquido"><strong>Valor líquido: R$ 0,00</strong></p>
+      <div id="pagamentosResumo"></div>
+    </div>
 
-    <table aria-label="Tabela de despesas">
+    <section class="expenses-panel" aria-labelledby="expensesTitle">
+      <div class="expenses-heading">
+        <div class="expenses-title-group">
+
+          <h2 id="expensesTitle"><i class="fa-solid fa-receipt"></i> Despesas</h2>
+          <p>Consulte e organize os lançamentos do período selecionado.</p>
+        </div>
+        <div class="expenses-actions">
+          <div id="despesasTotalInline" class="expenses-total" aria-live="polite"><span>Total do período</span><strong>R$ 0,00</strong></div>
+          <button id="btnNovaDespesa" class="btnPrimario" aria-label="Adicionar nova despesa"><i class="fa-solid fa-plus"></i> Nova despesa</button>
+        </div>
+      </div>
+
+    <div class="table-scroll" role="region" aria-label="Despesas: use a rolagem horizontal para ver todas as colunas"><table aria-label="Tabela de despesas">
       <thead>
         <tr>
           <th>Nome da Despesa</th>
@@ -103,16 +133,11 @@
         </tr>
       </thead>
       <tbody id="tabelaDespesas"></tbody>
-    </table>
+    </table></div>
+    </section>
+    </section>
 
-    <div class="resumo">
-      <h3>💰 Resumo Financeiro</h3>
-      <p id="totalAgendamentos">Total de agendamentos: 0</p>
-      <p id="valorTotal">Valor bruto (atendimentos): R$ 0,00</p>
-      <p id="valorDespesas">Despesas: R$ 0,00</p>
-      <p id="valorLiquido"><strong>Valor líquido: R$ 0,00</strong></p>
-      <div id="pagamentosResumo"></div>
-    </div>
+    
   </div>
 
   <!-- Modal Novo Atendimento -->
@@ -142,9 +167,9 @@
 
       <label>Procedimento:</label>
       <input type="text" id="procedimentoManual" list="procedimentosCatalogo" placeholder="Digite ou escolha na lista" autocomplete="off" required />
+      <small id="tempoMedioManual" class="tempo-medio-manual">Selecione um procedimento para ver o tempo médio.</small>
       <datalist id="procedimentosCatalogo">
         <option value="Maquiagem Social">
-        <option value="Maquiagem Express">
         <option value="Brow Lamination">
         <option value="Brow Lamination + Henna">
         <option value="Baby Liss">
@@ -297,6 +322,36 @@
     </div>
   </div>
 
+  <div id="modalValoresServicos" class="modal">
+    <div class="modal-content modal-servicos-valores">
+      <span class="close" id="fecharValoresServicos">&times;</span>
+      <h2>🏷️ Catálogo de serviços e produtos</h2>
+      <p class="pag-aviso">Cadastre serviços, produtos e combos. Os itens ativos aparecem no chat e na vitrine. Informe também o tempo médio para exibi-lo às clientes e nos novos agendamentos.</p>
+      <div id="catalogoAvisoTempo" class="catalogo-aviso-tempo" hidden><i class="fa-solid fa-circle-exclamation" aria-hidden="true"></i><div><strong></strong><span>Defina a duração média de cada item para informar as clientes e organizar a agenda.</span></div></div>
+      <div class="catalogo-admin-toolbar">
+        <span id="catalogoContagem"></span>
+        <button type="button" id="btnNovoProduto" class="btnSecundario"><i class="fa-solid fa-plus"></i> Novo item</button>
+      </div>
+      <div id="listaValoresServicos" class="service-price-editor"></div>
+      <form id="formProdutoCatalogo" class="catalogo-form" hidden>
+        <h3 id="tituloFormProduto">Novo item</h3>
+        <div class="catalogo-form-grid">
+          <label>Nome do item<input id="produtoNome" type="text" maxlength="80" required placeholder="Ex.: Combo make + penteado"></label>
+          <label>Tipo<select id="produtoTipo"><option value="servico">Serviço</option><option value="produto">Produto</option><option value="combo">Combo</option></select></label>
+          <label>Valor (R$)<input id="produtoValor" type="number" min="0" step="0.01" required placeholder="0,00"></label>
+          <label>Tempo médio (minutos)<input id="produtoTempoMedio" type="number" min="1" max="1440" step="1" required placeholder="Ex.: 60"><small>Informe a duração média do atendimento.</small></label>
+          <label class="catalogo-descricao-label">Descrição<textarea id="produtoDescricao" rows="3" maxlength="500" placeholder="Conte o que está incluído e os detalhes do item"></textarea></label>
+        </div>
+        <div class="catalogo-form-actions">
+          <button type="button" id="cancelarProduto" class="btnSecundario">Cancelar</button>
+          <button type="submit" class="btnPrimario">Adicionar ao catálogo</button>
+        </div>
+      </form>
+      <button id="salvarValoresServicos" class="btnPrimario">💾 Salvar catálogo</button>
+    </div>
+  </div>
+
+
   <!-- Modal Sinais (conferir quem já pagou a taxa de reserva) -->
   <div id="modalSinais" class="modal">
     <div class="modal-content modal-sinais">
@@ -362,6 +417,42 @@
       <h2>✅ Finalizar atendimento</h2>
       <p class="pag-aviso" id="finalizacaoContador"></p>
       <div id="finalizacaoCorpo"></div>
+    </div>
+  </div>
+
+  <div id="modalReagendamentosPendentes" class="modal">
+    <div class="modal-content modal-sinais">
+      <span class="close" id="fecharReagendamentosPendentes" title="Fechar">&times;</span>
+      <h2>🔁 Reagendamentos pendentes</h2>
+      <p class="pag-aviso">As propostas ficam aguardando a resposta da cliente. Confirme aqui quando ela aceitar, ou cancele a proposta se ela não puder.</p>
+      <div id="listaReagendamentosPendentes" class="sinal-lista"></div>
+    </div>
+  </div>
+
+  <div id="modalListaEspera" class="modal">
+    <div class="modal-content modal-lista-espera">
+      <span class="close" id="fecharListaEspera" title="Fechar">&times;</span>
+      <h2>⏳ Lista de espera e preferências</h2>
+      <p class="pag-aviso">Pedidos de horário e atendimentos personalizados enviados pelo chatbot.</p>
+      <div id="listaEsperaAdmin" class="sinal-lista"></div>
+    </div>
+  </div>
+
+  <div id="modalSolicitacoesCliente" class="modal">
+    <div class="modal-content modal-lista-espera">
+      <span class="close" id="fecharSolicitacoesCliente" title="Fechar">&times;</span>
+      <h2>💌 Solicitações das clientes</h2>
+      <p class="pag-aviso">Pedidos enviados pela Área da cliente. Revise e converse com a cliente para confirmar o que será feito.</p>
+      <div id="listaSolicitacoesCliente" class="sinal-lista"></div>
+    </div>
+  </div>
+
+  <div id="modalFeedbacksCliente" class="modal">
+    <div class="modal-content modal-lista-espera">
+      <span class="close" id="fecharFeedbacksCliente" title="Fechar">&times;</span>
+      <h2>✨ Feedbacks das clientes</h2>
+      <p class="pag-aviso">Feedbacks são privados até você escolher publicá-los no site.</p>
+      <div id="listaFeedbacksCliente" class="sinal-lista"></div>
     </div>
   </div>
 
@@ -1149,8 +1240,29 @@ table {
     <span id="fecharAcoes" class="close">&times;</span>
     <h2>⚙️ Escolher Ação</h2>
     <p>O que você deseja fazer com este atendimento?</p>
+    <div id="descontoRapido" hidden>
+      <label for="valorDescontoRapido">Valor do desconto (R$)</label>
+      <input id="valorDescontoRapido" type="number" min="0" step="0.01" inputmode="decimal" placeholder="Ex.: 15,00">
+      <div class="discount-actions">
+        <button id="cancelarDescontoRapido" class="btnSecundario" type="button">Cancelar</button>
+        <button id="salvarDescontoRapido" class="btnPrimario" type="button">Aplicar desconto</button>
+      </div>
+    </div>
+    <div id="formReagendamentoRapido" hidden>
+      <label for="novaDataAgendamento">Nova data disponível</label>
+      <select id="novaDataAgendamento"><option value="">Clique em sugerir novo horário</option></select>
+      <label for="novoHorarioAgendamento">Novo horário disponível</label>
+      <select id="novoHorarioAgendamento" disabled><option value="">Selecione uma data</option></select>
+      <small class="reagendamento-note">Ao preparar a mensagem, a proposta fica em Pendentes e a vaga é reservada. Quando a cliente confirmar, use “Confirmar novo horário” para atualizar a agenda e liberar o horário anterior.</small>
+      <div class="discount-actions">
+        <button id="cancelarReagendamento" class="btnSecundario" type="button">Voltar</button>
+        <button id="enviarReagendamento" class="btnPrimario" type="button" disabled>💬 Registrar e abrir WhatsApp</button>
+      </div>
+    </div>
     <div class="acoes-botoes">
       <button id="acaoEditar" class="btnPrimario">✏️ Editar Atendimento</button>
+      <button id="acaoDesconto" class="btnSecundario">🏷️ Conceder desconto</button>
+      <button id="acaoAbrirReagendamento" class="btnSecundario">🔁 Sugerir novo horário</button>
       <button id="acaoWhats" class="btnSecundario">💬 Confirmar no WhatsApp</button>
       <button id="acaoAtraso" class="btnSecundario">⏰ Avisar atraso (20 min)</button>
       <button id="acaoAgradecer" class="btnSecundario">💖 Enviar agradecimento</button>
@@ -1159,6 +1271,43 @@ table {
     </div>
   </div>
 </div>
+
+<style>
+#descontoRapido {
+  margin: 4px 0 12px;
+  padding: 14px;
+  border: 1px solid #e7e1d7;
+  border-radius: 8px;
+  background: #fbfaf7;
+  text-align: left;
+}
+#descontoRapido[hidden] { display: none; }
+#descontoRapido label { display: block; margin-bottom: 6px; color: #58665d; font-size: .78rem; font-weight: 600; }
+#descontoRapido input { width: 100%; min-height: 40px; margin-bottom: 10px; padding: 9px 11px; border: 1px solid #ddd6cb; border-radius: 6px; font: inherit; }
+#descontoRapido .discount-actions { display: flex; justify-content: flex-end; gap: 8px; }
+#formReagendamentoRapido {
+  margin: 4px 0 12px;
+  padding: 14px;
+  border: 1px solid #e7e1d7;
+  border-radius: 8px;
+  background: #fbfaf7;
+  text-align: left;
+}
+#formReagendamentoRapido[hidden] { display: none; }
+#formReagendamentoRapido label { display: block; margin: 0 0 6px; color: #58665d; font-size: .78rem; font-weight: 600; }
+#formReagendamentoRapido select { width: 100%; min-height: 40px; margin-bottom: 12px; padding: 8px 10px; border: 1px solid #ddd6cb; border-radius: 6px; background: #fff; font: inherit; }
+.reagendamento-note { display: block; margin: -2px 0 12px; color: #77736c; font-size: .73rem; line-height: 1.45; }
+#financeiroPanel > .resumo { grid-template-columns: repeat(5, minmax(0,1fr)); }
+#financeiroPanel > .resumo h3,
+#financeiroPanel > .resumo .summary-caption { grid-column: 1 / -1; }
+#valorDescontos { border-top: 3px solid #b79c65; }
+#valorDescontos strong { color: #8a6555; }
+@media (max-width: 760px) {
+  #financeiroPanel > .resumo { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  #descontoRapido .discount-actions { flex-direction: column; }
+  #descontoRapido .discount-actions button { width: 100%; }
+}
+</style>
 
 <footer class="footer-dev">
   Desenvolvido por 
@@ -1207,36 +1356,913 @@ table {
     });
   });
 
-  // Catálogo de procedimentos com valores — preenche o campo "Valor (R$)"
-  // automaticamente quando o procedimento digitado bate com um item do catálogo.
-  const catalogoProcedimentos = {
-    "Maquiagem Social": 135,
-    "Maquiagem Express": 105,
-    "Brow Lamination": 120,
-    "Brow Lamination + Henna": 135,
-    "Baby Liss": 60,
-    "Rabo Clássico": 80,
-    "Semipreso Romântico": 90,
-    "Semipreso com Tranças": 100,
-    "Coque Express": 120,
-    "Lash Lift": 120,
-    "Design Personalizado": 35,
-    "Design Personalizado + Tintura": 45,
-    "Design Personalizado + Henna": 45,
-    "Depilação de Buço": 15
-  };
-
-  const campoProcedimento = document.getElementById('procedimentoManual');
-  const campoValor = document.getElementById('valorManual');
-  if (campoProcedimento && campoValor) {
-    campoProcedimento.addEventListener('input', function () {
-      const preco = catalogoProcedimentos[campoProcedimento.value];
-      if (preco !== undefined) {
-        campoValor.value = preco;
-      }
-    });
-  }
 </script>
 
+<style>
+/* ── Repaginada do painel administrativo ─────── */
+:root {
+  --rosa: #f2e9e2; --rosa-med: #e8d7cc; --dourado: #c5a36a; --dourado-dk: #8b7047;
+  --verde: #263b34; --verde-lt: #3d5a4e; --off-white: #fbf9f6; --text: #302e2b; --text-soft: #726d67;
+  --shadow-sm: 0 5px 18px rgba(39,48,42,.06); --shadow-md: 0 14px 38px rgba(39,48,42,.12); --radius: 12px;
+}
+body { background: #f6f3ee; color: var(--text); }
+.site-header { padding: 13px 24px; background: rgba(251,249,246,.97); border-bottom: 1px solid #e5ddd2; box-shadow: 0 3px 16px rgba(39,48,42,.045); backdrop-filter: blur(12px); }
+.header-inner { max-width: 1440px; }
+.header-logo { font-size: 2rem; color: var(--verde); }
+.header-title { color: var(--verde); font-size: clamp(1.25rem,2.5vw,1.7rem); }
+.header-title i { color: var(--dourado-dk); font-size: 1.1rem; }
+.btn-voltar-topo { background: var(--verde); border-radius: 6px; padding: 10px 16px; }
+.btn-voltar-topo:hover { background: var(--verde-lt); color: white; }
+.login-container { min-height: calc(100vh - 74px); padding: 48px 20px 72px; background: radial-gradient(ellipse at 50% 10%, #fff 0, #f6f3ee 58%, #eee8df 100%); }
+.login-box { position: relative; width: min(100%,440px); padding: 42px 38px 34px; border: 1px solid #e9e1d7; border-top: 3px solid var(--dourado); border-radius: 10px; box-shadow: 0 18px 55px rgba(39,48,42,.1); text-align: left; }
+.login-kicker { display: block; margin-bottom: 8px; color: var(--dourado-dk); font-size: .65rem; font-weight: 600; letter-spacing: .16em; text-align: center; }
+.login-box h2 { margin: 0 0 26px; color: var(--verde); font: 500 2.15rem/1.1 var(--font-display); text-align: center; }
+.login-box input { min-height: 48px; margin: 0 0 12px; padding: 12px 15px; border: 1px solid #e4ded5; border-radius: 6px; background: #fcfbf9; color: var(--text); }
+.login-box input:focus { border-color: var(--verde-lt); box-shadow: 0 0 0 3px rgba(61,90,78,.1); }
+.login-box button#btnLogin { min-height: 48px; margin-top: 4px; border-radius: 6px; background: var(--verde); letter-spacing: .03em; }
+.login-box button#btnLogin:hover { background: var(--verde-lt); transform: translateY(-1px); }
+#erroLogin { padding: 9px 12px; color: #a9433c !important; background: #fbefed; border-radius: 5px; }
+#btnEsqueciSenha { width: 100%; margin-top: 11px !important; padding: 10px 14px; color: var(--verde); background: #f1eee8; border: 1px solid #e6dfd5; border-radius: 6px; }
+#btnEsqueciSenha:hover { background: #e8e2d8; transform: none; }
+.login-external { display: flex; align-items: center; gap: 12px; margin-top: 22px; padding: 14px; color: var(--text); text-decoration: none; background: #fbf9f6; border: 1px solid #e9e1d7; border-radius: 7px; transition: border-color .2s ease,transform .2s ease; }
+.login-external:hover { border-color: var(--dourado); transform: translateY(-1px); }
+.login-external-icon { display: grid; place-items: center; flex: 0 0 38px; height: 38px; color: var(--verde); background: #e8eee9; border-radius: 50%; }
+.login-external strong,.login-external small { display: block; }
+.login-external strong { color: var(--verde); font-size: .88rem; }
+.login-external small { margin-top: 2px; color: var(--text-soft); font-size: .7rem; line-height: 1.4; }
+.login-external-arrow { margin-left: auto; color: var(--dourado-dk); font-size: .8rem; }
+.admin-container { max-width: 1480px; padding: 26px clamp(14px,2.5vw,34px) 64px; }
+#adminHeader { left: 50%; right: auto; width: calc(100% - 32px); max-width: 1440px; transform: translateX(-50%); justify-content: flex-start; gap: 8px; padding: 12px 14px; background: rgba(255,255,255,.97); border: 1px solid #e8e1d7; border-radius: 10px; box-shadow: 0 10px 32px rgba(39,48,42,.1); backdrop-filter: blur(12px); }
+.btnPrimario,.btnPerigo,.btnSecundario,.btnFechar { min-height: 38px; padding: 9px 14px; border-radius: 6px; font-size: .8rem; box-shadow: none; }
+.btnPrimario { background: var(--verde); }
+.btnSecundario { color: var(--verde); background: #f1eee8; border: 1px solid #e7e0d6; }
+.btnPerigo { background: #a9574e; }
+.btnPrimario:hover { background: var(--verde-lt); transform: translateY(-1px); }
+.btnSecundario:hover { color: var(--verde); background: #e9e3da; transform: translateY(-1px); }
+.btnPerigo:hover { background: #91473f; transform: translateY(-1px); }
+#btnNovoAtendimento { min-height: 42px; padding: 10px 17px; box-shadow: 0 4px 12px rgba(38,59,52,.16); }
+.panel-title { justify-content: flex-start; margin: 24px 0 14px; padding-bottom: 10px; border-bottom: 1px solid #e3ddd4; color: var(--verde); font-size: clamp(1.3rem,2.4vw,1.8rem); text-align: left; }
+.panel-title i { color: var(--dourado-dk); }
+.saudacao { margin: 4px 0 8px; color: var(--verde); text-align: left; }
+#filtrosContainer,.filtros,.filtro-container { justify-content: flex-start; gap: 10px; padding: 14px; background: #fff; border: 1px solid #e8e1d7; border-radius: 8px; box-shadow: none; }
+#filtrosContainer input,#filtrosContainer select,[id^="filtro"]:is(input,select) { min-height: 40px; border-color: #e2dcd3; border-radius: 6px; background: #fcfbf9; }
+#filtrosContainer button,[id^="btnFiltr"],[id^="btnLimpar"] { border-radius: 6px; background: var(--verde); }
+.admin-container > table { display: block; width: 100%; margin-bottom: 30px; overflow-x: auto; white-space: nowrap; background: #fff; border: 1px solid #e8e1d7; border-radius: 8px; box-shadow: 0 4px 16px rgba(39,48,42,.045); scrollbar-color: #b9aa91 #f1eee8; }
+.admin-container > table th { position: sticky; top: 0; background: var(--verde); color: #fff; font-size: .78rem; letter-spacing: .025em; }
+.admin-container > table th,.admin-container > table td { padding: 11px 12px; border-bottom: 1px solid #eee9e2; }
+.admin-container > table tbody tr:nth-child(even) { background: #fcfbf9; }
+.admin-container > table tbody tr:hover { background: #f3f1eb; }
+.resumo { display: grid; grid-template-columns: repeat(4,minmax(0,1fr)); gap: 10px; margin-top: 8px; padding: 18px; background: transparent; border: 0; box-shadow: none; }
+.resumo h3 { grid-column: 1/-1; margin: 0 0 2px; color: var(--verde); font: 600 1.4rem var(--font-display); }
+.resumo > p,#pagamentosResumo { margin: 0; padding: 15px 16px; background: #fff; border: 1px solid #e8e1d7; border-radius: 7px; color: var(--text-soft); font-size: .85rem; }
+.resumo > p strong { color: var(--verde); }
+#pagamentosResumo { grid-column: 1/-1; }
+#pagamentosResumo h4 { margin: 0 0 8px; color: var(--verde); }
+#pagamentosResumo ul { display: flex; flex-wrap: wrap; gap: 8px; margin: 0; padding: 0; list-style: none; }
+#pagamentosResumo li { padding: 7px 11px; background: #f4f1eb; border-radius: 5px; color: #57544e; font-size: .8rem; }
+.modal { background: rgba(25,36,30,.54); backdrop-filter: blur(3px); }
+.modal-content,.modal-acoes { border: 1px solid #e9e1d7; border-top: 3px solid var(--dourado); border-radius: 10px; box-shadow: 0 24px 70px rgba(20,28,23,.22); }
+.modal-content input,.modal-content select,.modal-content textarea { border-color: #e4ded5; border-radius: 6px; background: #fcfbf9; }
+.footer-dev { background: #eee9e2; border-top: 1px solid #e2d9cd; }
+@media (max-width: 900px) {
+  #adminHeader { max-height: 44vh; overflow-y: auto; }
+  .resumo { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 600px) {
+  .site-header { padding: 11px 14px; }
+  .header-inner { gap: 8px; }
+  .header-title { font-size: 1.1rem; }
+  .header-title i { display: none; }
+  .btn-voltar-topo { padding: 9px 11px; font-size: .75rem; }
+  .login-container { min-height: calc(100vh - 62px); padding: 30px 14px 48px; }
+  .login-box { width: 100%; padding: 34px 22px 24px; }
+  .login-box h2 { font-size: 1.9rem; }
+  .admin-container { padding: 18px 12px 40px; }
+  #adminHeader { width: calc(100% - 16px); padding: 9px; gap: 6px; border-radius: 8px; }
+  #adminHeader button { flex: 1 1 calc(50% - 6px); min-width: 120px; padding: 9px 8px; font-size: .72rem; }
+  #adminHeader #btnNovoAtendimento { flex: 1 1 100%; order: 0; }
+  .panel-title { font-size: 1.28rem; }
+  .resumo { grid-template-columns: 1fr; padding: 8px 0; }
+  .resumo h3,#pagamentosResumo { grid-column: 1; }
+}
+@media (prefers-reduced-motion: reduce) {
+  *,*::before,*::after { scroll-behavior: auto !important; transition-duration: .01ms !important; animation-duration: .01ms !important; }
+}
+</style>
+<style>
+/* ── Organização do dashboard e do relatório ── */
+#adminHeader {
+  position: sticky !important;
+  top: 78px;
+  left: auto;
+  right: auto;
+  display: grid;
+  grid-template-columns: 1.05fr 1.25fr 1.65fr auto;
+  align-items: stretch;
+  gap: 9px;
+  width: 100%;
+  max-width: 1440px;
+  margin: 0 auto 22px;
+  padding: 10px;
+  transform: none;
+}
+#adminHeaderSpacer { display: none !important; height: 0 !important; }
+.toolbar-group {
+  display: flex;
+  align-content: flex-start;
+  align-items: center;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-width: 0;
+  padding: 8px;
+  background: #faf9f6;
+  border: 1px solid #eee9e2;
+  border-radius: 7px;
+}
+.toolbar-group::before {
+  content: attr(data-label);
+  display: block;
+  flex: 0 0 100%;
+  margin: 0 2px 3px;
+  color: #898276;
+  font-size: .59rem;
+  font-weight: 600;
+  letter-spacing: .12em;
+  line-height: 1.2;
+  text-transform: uppercase;
+}
+.toolbar-group button { display: inline-flex; align-items: center; justify-content: center; gap: 7px; min-height: 36px; padding: 8px 10px; white-space: nowrap; }
+.toolbar-group button i { font-size: .78rem; }
+.toolbar-primary { background: #f0f3ef; border-color: #dfe6df; }
+.toolbar-primary #btnNovoAtendimento { width: 100%; justify-content: flex-start; }
+.toolbar-account { justify-content: center; }
+.toolbar-account #btnApagarMes { border-color: #f0deda; }
+.toolbar-count { display: inline-flex; align-items: center; justify-content: center; min-width: 20px; height: 20px; padding: 0 5px; color: white; background: #8c6555; border-radius: 10px; font-size: .67rem; font-weight: 700; }
+
+.saudacao { padding: 0 4px 10px; border-bottom: 1px solid #e7e1d8; font-family: var(--font-body); font-size: .92rem; font-weight: 500; }
+.resumo {
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 12px;
+  margin: 4px 0 28px;
+  padding: 0;
+}
+.resumo h3 { grid-column: 1 / 3; align-self: end; margin: 0; font-size: 1.6rem; }
+.resumo .summary-caption { grid-column: 3 / -1; align-self: end; margin: 0 0 3px; padding: 0; color: #817c73; background: transparent; border: 0; text-align: right; font-size: .75rem; }
+.resumo > p {
+  display: flex;
+  flex-direction: column;
+  justify-content: space-between;
+  min-height: 104px;
+  padding: 15px 17px;
+  border: 1px solid #e6e1d8;
+  border-radius: 8px;
+  box-shadow: 0 3px 12px rgba(39,48,42,.035);
+  font-size: .72rem;
+  letter-spacing: .045em;
+  text-transform: uppercase;
+}
+.resumo > p span { color: #7a756d; }
+.resumo > p strong { color: var(--verde); font: 600 1.55rem/1.1 var(--font-display); letter-spacing: 0; }
+#totalAgendamentos { border-top: 3px solid #9baf9d; }
+#valorTotal { border-top: 3px solid #789180; }
+#valorDespesas { border-top: 3px solid #c49a83; }
+#valorLiquido { border-top: 3px solid #b79c65; background: #fdfcf9; }
+#valorLiquido strong { color: #294d3e; }
+#pagamentosResumo { grid-column: 1 / -1; padding: 15px 17px; }
+#pagamentosResumo h4 { margin-bottom: 10px; font: 600 1rem var(--font-display); }
+#pagamentosResumo ul { gap: 8px; }
+#pagamentosResumo li { display: flex; align-items: center; gap: 14px; padding: 8px 11px; border: 1px solid #ece7de; background: #fbfaf7; }
+#pagamentosResumo li strong { color: var(--verde); font-size: .82rem; }
+
+.panel-title { margin: 30px 0 13px; padding: 0 0 11px; border-bottom: 0; font-size: 1.55rem; }
+.panel-title::after { content: ''; align-self: center; flex: 1; height: 1px; margin-left: 12px; background: #e3ddd4; }
+.panel-title span { align-self: center; color: #8a857c; font: 400 .72rem var(--font-body); }
+.admin-container > table { margin-bottom: 36px; border-spacing: 0; border-radius: 8px; box-shadow: 0 6px 20px rgba(39,48,42,.05); }
+.admin-container > table[aria-label="Tabela de agendamentos"] { min-width: max-content; }
+.admin-container > table[aria-label="Tabela de despesas"] { min-width: min(100%, 900px); }
+.admin-container > table th { padding: 12px 13px; font-size: .72rem; text-transform: uppercase; letter-spacing: .06em; }
+.admin-container > table td { padding: 12px 13px; font-size: .81rem; }
+.admin-container > table td strong { color: var(--verde); }
+.admin-container > table .btnAcoes { padding: 7px 11px; color: var(--verde); background: #edf1ed; border: 1px solid #dce5dc; border-radius: 5px; font: 600 .74rem var(--font-body); cursor: pointer; }
+.admin-container > table .btnAcoes:hover { background: #dfe8df; }
+.admin-container > table .btnExcluirDespesa { min-height: 32px; padding: 6px 10px; border-radius: 5px; font-size: .72rem; }
+.admin-container > table input[type="checkbox"] { accent-color: var(--verde); width: 17px; height: 17px; }
+
+.meta-form,.meta-card,.meta-msg { border-color: #e5ded4; box-shadow: none; }
+.meta-card { border-radius: 7px; }
+.meta-card.destaque { background: #f6f5ef; border-color: #d9cfb7; }
+.meta-barra { height: 20px; background: #ece8df; }
+.meta-barra .real { background: #42634f; }
+.meta-barra .proj { background: #c5a36a; }
+.meta-msg { border-left-color: #b99a61; border-radius: 6px; background: #f7f4ed; }
+.meta-grafico { min-height: 260px; }
+.modal-meta { max-width: 900px; }
+.footer-dev { margin-top: 24px; }
+
+@media (max-width: 1180px) {
+  #adminHeader { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  .toolbar-account { justify-content: flex-start; }
+}
+@media (max-width: 760px) {
+  #adminHeader { position: static !important; top: auto !important; display: grid; grid-template-columns: 1fr; width: 100%; max-height: none; margin-bottom: 18px; padding: 8px; transform: none; overflow: visible; }
+  .toolbar-group { padding: 8px; }
+  .toolbar-group button { flex: 1 1 auto; }
+  .toolbar-primary #btnNovoAtendimento { width: auto; flex: 1 1 100%; }
+  .resumo { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .resumo h3 { grid-column: 1 / -1; }
+  .resumo .summary-caption { grid-column: 1 / -1; text-align: left; }
+  .panel-title { font-size: 1.3rem; }
+  .panel-title span { font-size: .65rem; }
+}
+@media (max-width: 440px) {
+  .resumo { grid-template-columns: 1fr; }
+  .resumo h3,.resumo .summary-caption { grid-column: 1; }
+  .panel-title span { display: none; }
+}
+</style>
+<style>
+/* Toolbar: grupos compactos, sem barra gigante de botões */
+#adminHeader { grid-template-columns: 1fr 1.2fr 1.5fr auto; }
+.toolbar-group { gap: 5px; padding: 7px; }
+.toolbar-group button { min-height: 34px; padding: 7px 9px; font-size: .74rem; }
+.toolbar-group button i { color: var(--dourado-dk); }
+.toolbar-primary #btnNovoAtendimento i { color: #f1dcb5; }
+.toolbar-primary #btnNovoAtendimento { background: var(--verde); }
+.toolbar-account #btnApagarMes { color: #96564d; background: #fbf2f0; }
+.toolbar-account #btnApagarMes i { color: #96564d; }
+
+/* Indicadores do período */
+.resumo > p { min-width: 0; overflow-wrap: anywhere; }
+#totalAgendamentos strong { font-size: 1.8rem; }
+#pagamentosResumo li { flex-direction: column; align-items: flex-start; gap: 3px; min-width: 138px; }
+#pagamentosResumo li span { color: #7a756d; font-size: .68rem; text-transform: uppercase; letter-spacing: .04em; }
+#pagamentosResumo li strong { font-size: .95rem; }
+
+/* Grades mais arejadas para agenda e despesas */
+.admin-container > table { table-layout: auto; }
+.admin-container > table[aria-label="Tabela de agendamentos"] { min-width: 1600px; }
+.admin-container > table[aria-label="Tabela de despesas"] { min-width: 860px; }
+.admin-container > table th:first-child,
+.admin-container > table td:first-child { text-align: left; }
+.admin-container > table th:last-child,
+.admin-container > table td:last-child { position: sticky; right: 0; background: #fff; box-shadow: -6px 0 10px rgba(39,48,42,.04); }
+.admin-container > table thead th:last-child { background: var(--verde); }
+.admin-container > table tbody tr:nth-child(even) td:last-child { background: #fcfbf9; }
+.admin-container > table tbody tr:hover td:last-child { background: #f3f1eb; }
+.admin-container > table[aria-label="Tabela de despesas"] td:nth-child(3) { min-width: 240px; max-width: 340px; white-space: normal; }
+
+@media (max-width: 1180px) {
+  #adminHeader { grid-template-columns: repeat(2,minmax(0,1fr)); }
+}
+@media (max-width: 760px) {
+  #adminHeader { grid-template-columns: 1fr; }
+  .toolbar-group button { flex: 1 1 auto; }
+  .toolbar-account { justify-content: stretch; }
+  .toolbar-account button { flex: 1 1 calc(50% - 5px); }
+}
+</style>
+<style>
+/* Acabamento de alinhamento e uso em celular */
+.toolbar-group button,
+.toolbar-group button#btnNovoAtendimento,
+.toolbar-group #btnFiltros {
+  font-family: var(--font-body) !important;
+  font-size: .76rem !important;
+  font-weight: 600 !important;
+  line-height: 1.2;
+  letter-spacing: .005em;
+}
+.toolbar-group #btnFiltros { min-width: 104px; }
+.toolbar-group button i { flex: 0 0 auto; }
+
+.saudacao {
+  width: fit-content;
+  max-width: 100%;
+  margin: 8px auto 18px;
+  padding: 8px 14px;
+  border: 1px solid #e5e1d8;
+  border-radius: 999px;
+  background: #fbfaf7;
+  color: #5c665e;
+  font-family: var(--font-body);
+  font-size: .82rem;
+  font-weight: 500;
+  line-height: 1.4;
+  text-align: center;
+}
+.saudacao i { color: #a68b59; }
+
+.resumo { grid-template-columns: repeat(4,minmax(0,1fr)); }
+.resumo h3 { grid-column: 1 / -1; text-align: center; }
+.resumo .summary-caption { grid-column: 1 / -1; margin-top: -6px; text-align: center; }
+.panel-title { justify-content: center; text-align: center; }
+.panel-title::after { display: none; }
+.panel-title span { margin-left: 3px; }
+
+.table-scroll {
+  width: 100%;
+  max-width: 100%;
+  margin: 0 0 34px;
+  overflow-x: auto;
+  overflow-y: hidden;
+  overscroll-behavior-inline: contain;
+  border: 1px solid #e6e1d8;
+  border-radius: 8px;
+  background: #fff;
+  box-shadow: 0 6px 20px rgba(39,48,42,.045);
+  scrollbar-color: #b9aa91 #f1eee8;
+  scrollbar-width: thin;
+}
+.table-scroll > table {
+  display: table;
+  width: max-content;
+  min-width: 100%;
+  margin: 0;
+  overflow: visible;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] { min-width: 1500px; }
+.table-scroll > table[aria-label="Tabela de despesas"] { min-width: 780px; }
+.table-scroll > table th:last-child,
+.table-scroll > table td:last-child { position: sticky; right: 0; background: #fff; box-shadow: -6px 0 10px rgba(39,48,42,.045); }
+.table-scroll > table thead th:last-child { background: var(--verde); }
+.table-scroll > table tbody tr:nth-child(even) td:last-child { background: #fcfbf9; }
+.table-scroll > table tbody tr:hover td:last-child { background: #f3f1eb; }
+
+@media (max-width: 760px) {
+  #adminHeader { grid-template-columns: repeat(2,minmax(0,1fr)); align-items: start; }
+  .toolbar-group { min-width: 0; }
+  .toolbar-group button,
+  .toolbar-group button#btnNovoAtendimento,
+  .toolbar-group #btnFiltros { min-width: 0; max-width: 100%; padding: 8px 7px; font-size: .7rem !important; white-space: normal; }
+  .toolbar-group button i { font-size: .72rem; }
+  .toolbar-primary #btnNovoAtendimento { flex-basis: 100%; }
+  .resumo { grid-template-columns: repeat(2,minmax(0,1fr)); }
+  .resumo h3,.resumo .summary-caption { grid-column: 1 / -1; }
+  .resumo > p { min-height: 92px; padding: 12px; }
+  .resumo > p strong { font-size: 1.3rem; }
+  .panel-title { flex-wrap: wrap; gap: 7px; }
+  .panel-title span { flex-basis: 100%; margin: 0; text-align: center; }
+  .table-scroll { margin-bottom: 26px; -webkit-overflow-scrolling: touch; }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] { min-width: 1420px; }
+  .table-scroll > table[aria-label="Tabela de despesas"] { min-width: 720px; }
+}
+@media (max-width: 420px) {
+  #adminHeader { grid-template-columns: 1fr; }
+  .toolbar-group { padding: 7px; }
+  .toolbar-primary { display: grid; grid-template-columns: 1fr 1fr; }
+  .toolbar-primary::before { grid-column: 1 / -1; }
+  .toolbar-primary #btnNovoAtendimento { grid-column: 1 / -1; }
+  .resumo { grid-template-columns: repeat(2,minmax(0,1fr)); gap: 8px; }
+  .resumo > p { font-size: .63rem; }
+  .resumo > p strong { font-size: 1.15rem; }
+  .saudacao { font-size: .75rem; border-radius: 8px; }
+}
+</style>
+<style>
+/* Aba de despesas: área própria e ação junto ao conteúdo */
+.expenses-panel {
+  margin: 24px 0 12px;
+  padding: clamp(16px, 2.4vw, 28px);
+  background: #fff;
+  border: 1px solid #e7e1d8;
+  border-radius: 10px;
+  box-shadow: 0 7px 24px rgba(39,48,42,.055);
+}
+.expenses-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 22px;
+  margin-bottom: 20px;
+}
+.expenses-title-group { min-width: 0; }
+.expenses-eyebrow { display: block; margin-bottom: 4px; color: #92794e; font-size: .62rem; font-weight: 700; letter-spacing: .15em; }
+.expenses-title-group h2 { display: flex; align-items: center; gap: 10px; margin: 0; color: var(--verde); font: 600 1.65rem/1.2 var(--font-display); }
+.expenses-title-group h2 i { color: #a78c59; font-size: 1.05rem; }
+.expenses-title-group p { margin: 5px 0 0; color: #7a756d; font-size: .8rem; }
+.expenses-actions { display: flex; align-items: center; justify-content: flex-end; gap: 12px; flex-shrink: 0; }
+.expenses-total { display: flex; flex-direction: column; gap: 2px; min-width: 145px; padding: 9px 13px; background: #f3f6f2; border: 1px solid #e1e9df; border-radius: 7px; }
+.expenses-total span { color: #768075; font-size: .62rem; letter-spacing: .08em; text-transform: uppercase; }
+.expenses-total strong { color: #294d3e; font: 600 1.05rem/1.2 var(--font-body); white-space: nowrap; }
+#btnNovaDespesa { min-height: 42px; padding: 10px 15px; border-radius: 6px; white-space: nowrap; }
+#btnNovaDespesa i { margin-right: 4px; }
+.expenses-panel .table-scroll { margin: 0; border-color: #eee9e2; box-shadow: none; }
+.expenses-panel .table-scroll > table { min-width: 760px; }
+.expenses-panel .table-scroll > table th { background: #f3f5f2; color: #45584d; border-bottom: 1px solid #e6e9e4; }
+.expenses-panel .table-scroll > table th:last-child { background: #f3f5f2; }
+.expenses-panel .table-scroll > table td { background: #fff; }
+.expenses-panel .table-scroll > table tbody tr:nth-child(even) td { background: #fcfbf9; }
+.expenses-panel .table-scroll > table tbody tr:hover td { background: #f5f7f3; }
+.expenses-panel .table-scroll > table tbody tr.empty-expenses-row td { padding: 0; white-space: normal; }
+.empty-expenses { display: flex; flex-direction: column; align-items: center; gap: 5px; padding: 32px 16px; color: #7e817b; text-align: center; }
+.empty-expenses i { margin-bottom: 4px; color: #a78c59; font-size: 1.3rem; }
+.empty-expenses strong { color: #4b574f; font: 600 1.08rem var(--font-display); }
+.empty-expenses span { color: #89857d; font-size: .76rem; }
+.expenses-panel .btnExcluirDespesa { color: #95584e; background: #fbf1ef; border: 1px solid #f0dedb; }
+.expenses-panel .btnExcluirDespesa:hover { background: #f6e5e1; }
+@media (max-width: 700px) {
+  .expenses-panel { margin-top: 18px; padding: 16px 12px; }
+  .expenses-heading { align-items: stretch; flex-direction: column; gap: 14px; margin-bottom: 14px; }
+  .expenses-title-group h2 { font-size: 1.45rem; }
+  .expenses-actions { justify-content: space-between; gap: 8px; }
+  .expenses-total { min-width: 0; flex: 1; }
+  #btnNovaDespesa { min-height: 42px; }
+  .expenses-panel .table-scroll > table { min-width: 700px; }
+}
+@media (max-width: 380px) {
+  .expenses-actions { align-items: stretch; flex-direction: column; }
+  .expenses-total { width: 100%; }
+  #btnNovaDespesa { width: 100%; justify-content: center; }
+}
+</style>
+<style>
+/* Abas de navegação entre agenda e financeiro */
+.admin-tabs {
+  display: flex;
+  justify-content: center;
+  gap: 5px;
+  width: fit-content;
+  max-width: 100%;
+  margin: 4px auto 22px;
+  padding: 5px;
+  background: #eeece6;
+  border: 1px solid #e4dfd5;
+  border-radius: 9px;
+}
+.admin-tab {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-width: 180px;
+  min-height: 42px;
+  padding: 10px 22px;
+  color: #68675f;
+  background: transparent;
+  border: 0;
+  border-radius: 6px;
+  font: 600 .84rem var(--font-body);
+  cursor: pointer;
+  transition: color .2s ease, background .2s ease, box-shadow .2s ease;
+}
+.admin-tab:hover { color: var(--verde); background: rgba(255,255,255,.55); }
+.admin-tab.is-active { color: #fff; background: var(--verde); box-shadow: 0 3px 9px rgba(38,59,52,.16); }
+.admin-tab.is-active i { color: #e5d1aa; }
+.dashboard-panel[hidden] { display: none !important; }
+.dashboard-panel { animation: panelFadeIn .18s ease-out; }
+@keyframes panelFadeIn { from { opacity: .7; transform: translateY(3px); } to { opacity: 1; transform: none; } }
+#agendaPanel > .panel-title { margin-top: 8px; }
+#financeiroPanel > .resumo { margin-top: 8px; }
+@media (max-width: 600px) {
+  .admin-tabs { display: grid; grid-template-columns: 1fr 1fr; width: 100%; margin: 2px 0 18px; }
+  .admin-tab { min-width: 0; min-height: 44px; padding: 9px 8px; font-size: .78rem; }
+  #agendaPanel > .panel-title { margin-top: 8px; }
+}
+</style>
+<style>
+/* Financeiro centralizado como uma única área de trabalho */
+#financeiroPanel {
+  width: 100%;
+  max-width: 1120px;
+  margin: 0 auto;
+}
+#financeiroPanel > .resumo {
+  width: 100%;
+  max-width: 1040px;
+  margin: 14px auto 30px;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  justify-items: stretch;
+}
+#financeiroPanel > .resumo h3 {
+  position: relative;
+  margin: 0;
+  padding: 0 38px;
+  color: var(--verde);
+  font-size: 1.8rem;
+  text-align: center;
+}
+#financeiroPanel > .resumo h3 .btn-privacidade-valores {
+  position: absolute;
+  top: 50%;
+  right: 0;
+  margin: 0;
+  transform: translateY(-50%);
+}
+#financeiroPanel > .resumo .summary-caption {
+  margin: -6px 0 7px;
+  color: #817c73;
+  text-align: center;
+}
+#financeiroPanel > .resumo > p { width: 100%; }
+#financeiroPanel .resumo > #pagamentosResumo { text-align: center; }
+#financeiroPanel .resumo > #pagamentosResumo ul { justify-content: center; }
+#financeiroPanel .expenses-panel {
+  width: 100%;
+  max-width: 1040px;
+  margin: 0 auto 12px;
+  padding: clamp(20px, 3vw, 32px);
+}
+#financeiroPanel .expenses-heading {
+  flex-direction: column;
+  justify-content: center;
+  gap: 16px;
+  margin-bottom: 22px;
+  text-align: center;
+}
+#financeiroPanel .expenses-title-group h2 { justify-content: center; font-size: 1.85rem; }
+#financeiroPanel .expenses-title-group p { margin-top: 6px; }
+#financeiroPanel .expenses-actions { justify-content: center; }
+#financeiroPanel .expenses-total { min-width: 190px; text-align: left; }
+#financeiroPanel .table-scroll { width: 100%; }
+#financeiroPanel .table-scroll > table { min-width: 100%; width: 100%; }
+#financeiroPanel .table-scroll > table th { text-align: center; }
+#financeiroPanel .table-scroll > table td { vertical-align: middle; }
+#financeiroPanel .table-scroll > table td:first-child { text-align: left; }
+#financeiroPanel .table-scroll > table td:nth-child(5) { color: #344d42; font-weight: 600; white-space: nowrap; }
+
+@media (max-width: 760px) {
+  #financeiroPanel > .resumo { grid-template-columns: repeat(2, minmax(0,1fr)); gap: 10px; margin-top: 6px; }
+  #financeiroPanel > .resumo h3,
+  #financeiroPanel > .resumo .summary-caption,
+  #financeiroPanel .resumo > #pagamentosResumo { grid-column: 1 / -1; }
+  #financeiroPanel .expenses-panel { padding: 20px 14px; }
+  #financeiroPanel .expenses-title-group h2 { font-size: 1.55rem; }
+  #financeiroPanel .expenses-actions { width: 100%; }
+  #financeiroPanel .expenses-total { min-width: 0; }
+  #financeiroPanel .table-scroll > table { min-width: 720px; width: max-content; }
+}
+@media (max-width: 420px) {
+  #financeiroPanel > .resumo { grid-template-columns: repeat(2, minmax(0,1fr)); }
+  #financeiroPanel > .resumo > p { min-height: 88px; padding: 11px 9px; }
+  #financeiroPanel > .resumo > p strong { font-size: 1.05rem; }
+  #financeiroPanel .expenses-actions { align-items: stretch; flex-direction: column; }
+  #financeiroPanel .expenses-total { width: 100%; }
+  #financeiroPanel #btnNovaDespesa { width: 100%; }
+}
+#financeiroPanel > .resumo { grid-template-columns: repeat(5, minmax(0,1fr)); }
+#financeiroPanel > .resumo h3,
+#financeiroPanel > .resumo .summary-caption { grid-column: 1 / -1; }
+#valorDescontos { border-top: 3px solid #b79c65; }
+#valorDescontos strong { color: #8a6555; }
+#valorDescontos small { color: #817c73; font-size: .72rem; }
+@media (max-width: 760px) {
+  #financeiroPanel > .resumo { grid-template-columns: repeat(2, minmax(0,1fr)); }
+}
+</style>
+<style>
+/* O atalho de filtros acompanha o destaque de Novo atendimento */
+#adminHeader #btnFiltros {
+  min-height: 42px;
+  padding: 10px 17px;
+  color: #fff;
+  background: var(--verde);
+  border: 0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(38,59,52,.16);
+  font-family: var(--font-body);
+  font-size: .92rem;
+  font-weight: 600;
+}
+#adminHeader #btnFiltros i { color: #f1dcb5; }
+#adminHeader #btnFiltros:hover {
+  color: #fff;
+  background: var(--verde-lt);
+  box-shadow: 0 6px 18px rgba(38,59,52,.22);
+  transform: translateY(-1px);
+}
+#adminHeader #btnFiltros:active {
+  transform: scale(.95);
+  box-shadow: 0 2px 8px rgba(38,59,52,.3);
+}
+#adminHeader #btnReagendamentosPendentes {
+  min-height: 42px;
+  padding: 10px 17px;
+  color: #fff;
+  background: var(--verde);
+  border: 0;
+  border-radius: 6px;
+  box-shadow: 0 4px 12px rgba(38,59,52,.16);
+  font-family: var(--font-body);
+  font-size: .92rem;
+  font-weight: 600;
+}
+#adminHeader #btnReagendamentosPendentes i { color: #f1dcb5; }
+#adminHeader #btnReagendamentosPendentes .toolbar-count-pendentes { background: #fff; color: var(--verde); }
+#adminHeader #btnReagendamentosPendentes:hover {
+  color: #fff;
+  background: var(--verde-lt);
+  box-shadow: 0 6px 18px rgba(38,59,52,.22);
+  transform: translateY(-1px);
+}
+#adminHeader #btnReagendamentosPendentes:active {
+  transform: scale(.95);
+  box-shadow: 0 2px 8px rgba(38,59,52,.3);
+}
+@media (max-width: 760px) {
+  #adminHeader #btnFiltros { min-height: 38px; padding: 8px 7px; font-size: .7rem; }
+  #adminHeader #btnReagendamentosPendentes { min-height: 38px; padding: 8px 7px; font-size: .7rem; }
+}
+</style>
+<style>
+/* Agenda enxuta: informações relacionadas compartilham uma coluna */
+.table-scroll > table[aria-label="Tabela de agendamentos"] {
+  width: 100%;
+  min-width: 0;
+  table-layout: fixed;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] th,
+.table-scroll > table[aria-label="Tabela de agendamentos"] td { padding: 12px 10px; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] th:nth-child(1) { width: 19%; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] th:nth-child(2) { width: 15%; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] th:nth-child(3) { width: 17%; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] th:nth-child(4) { width: 14%; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] th:nth-child(5) { width: 17%; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] th:nth-child(6) { width: 9%; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] th:nth-child(7) { width: 9%; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] td { white-space: normal; line-height: 1.4; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] td:nth-child(1) strong,
+.table-scroll > table[aria-label="Tabela de agendamentos"] td:nth-child(5) strong { color: var(--verde); }
+.appointment-detail { display: block; color: #77736c; font-size: .72rem; }
+.appointment-amount { display: flex; flex-direction: column; gap: 3px; }
+.appointment-amount .final { color: var(--verde); font-weight: 700; }
+.appointment-amount .discount { color: #8a6555; font-size: .7rem; }
+.appointment-status { display: flex; align-items: center; justify-content: center; gap: 6px; }
+.appointment-status label { color: #6d716b; font-size: .72rem; }
+@media (max-width: 760px) {
+  .table-scroll:has(> table[aria-label="Tabela de agendamentos"]) {
+    overflow: visible;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+  .table-scroll > table[aria-label="Tabela de agendamentos"],
+  .table-scroll > table[aria-label="Tabela de agendamentos"] tbody,
+  .table-scroll > table[aria-label="Tabela de agendamentos"] tr,
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td { display: block; width: 100%; }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] { min-width: 0; table-layout: auto; }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] thead { display: none; }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] tbody { display: grid; gap: 12px; }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] tr {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0,1fr));
+    gap: 10px 14px;
+    padding: 15px;
+    border: 1px solid #e7e2d9;
+    border-radius: 10px;
+    background: #fff;
+    box-shadow: 0 4px 14px rgba(39,48,42,.045);
+  }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 4px;
+    padding: 0;
+    border: 0;
+    text-align: left;
+    white-space: normal;
+    overflow-wrap: anywhere;
+    background: transparent !important;
+    box-shadow: none !important;
+  }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td::before {
+    content: attr(data-label);
+    color: #858077;
+    font-size: .62rem;
+    font-weight: 700;
+    letter-spacing: .06em;
+    text-transform: uppercase;
+  }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td:last-child { position: static; }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td:nth-child(1),
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td:nth-child(3),
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td:nth-child(5),
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td:nth-child(7) { grid-column: 1 / -1; }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] td:nth-child(6) { align-items: flex-start; }
+  .appointment-status { justify-content: flex-start; }
+  .table-scroll > table[aria-label="Tabela de agendamentos"] .btnAcoes { width: 100%; min-height: 40px; }
+}
+.modal-servicos-valores { max-width: 700px; max-height: 88vh; overflow-y: auto; }
+.service-price-editor { display: grid; gap: 8px; margin: 18px 0; }
+.service-price-row-admin { display: grid; grid-template-columns: minmax(0,1fr) 150px; align-items: center; gap: 12px; padding: 10px 12px; border: 1px solid #e9e4db; border-radius: 7px; background: #fff; }
+.service-price-row-admin label { margin: 0; color: #47564d; font-size: .82rem; font-weight: 500; }
+.service-price-row-admin input { width: 100%; min-height: 38px; margin: 0; padding: 8px 10px; border: 1px solid #dfd9cf; border-radius: 6px; }
+#salvarValoresServicos { width: 100%; }
+.reagendamento-pendente-card { padding: 15px; border: 1px solid #e7e1d7; border-left: 3px solid var(--dourado); border-radius: 8px; background: #fff; }
+.reagendamento-pendente-card h3 { margin: 0 0 7px; color: var(--verde); font: 600 1rem var(--font-body); }
+.reagendamento-pendente-card p { margin: 4px 0; color: #68645d; font-size: .82rem; }
+.reagendamento-pendente-card .reagendamento-pendente-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.reagendamento-pendente-card button { flex: 1 1 170px; min-height: 38px; }
+.pendentes-vazio { padding: 20px; color: #77736c; border: 1px dashed #ddd6cb; border-radius: 8px; text-align: center; }
+.toolbar-count-pendentes { display: inline-grid; place-items: center; min-width: 19px; height: 19px; margin-left: 3px; padding: 0 5px; border-radius: 10px; background: #a76d45; color: white; font-size: .66rem; font-weight: 700; }
+#formReagendamentoRapido .discount-actions { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 8px; }
+#formReagendamentoRapido .discount-actions button { flex: 1 1 auto; }
+@media (max-width: 520px) {
+  .service-price-row-admin { grid-template-columns: 1fr; gap: 4px; }
+  .service-price-row-admin input { max-width: none; }
+  #formReagendamentoRapido .discount-actions { flex-direction: column; }
+}
+.catalogo-admin-toolbar { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-top: 18px; color: #77736c; font-size: .78rem; }
+.catalogo-admin-toolbar button { display: inline-flex; align-items: center; justify-content: center; gap: 8px; min-height: 40px; }
+.catalogo-item-detalhes { min-width: 0; }
+.catalogo-item-topo { display: flex; align-items: center; flex-wrap: wrap; gap: 8px; }
+.table-scroll > table[aria-label="Tabela de agendamentos"] .btnAcoes {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  min-height: 38px;
+  padding: 8px 12px;
+  border: 1px solid #d7e2d8;
+  border-radius: 9px;
+  background: linear-gradient(145deg, #f5f8f4, #eaf1eb);
+  color: #315342;
+  font: 650 .76rem var(--font-body);
+  letter-spacing: .01em;
+  white-space: nowrap;
+  box-shadow: 0 2px 5px rgba(39, 66, 48, .07), inset 0 1px 0 rgba(255,255,255,.85);
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease, transform .18s ease;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .btnAcoes > i:first-child {
+  display: grid;
+  width: 21px;
+  height: 21px;
+  place-items: center;
+  border-radius: 6px;
+  background: #dce9de;
+  color: #356346;
+  font-size: .68rem;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .btnAcoes .btnAcoes-chevron {
+  margin-left: 2px;
+  color: #75877a;
+  font-size: .62rem;
+  transition: transform .18s ease;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .btnAcoes:hover {
+  transform: translateY(-1px);
+  border-color: #b9cdbb;
+  background: linear-gradient(145deg, #edf4ed, #e0ebe1);
+  box-shadow: 0 4px 10px rgba(39, 66, 48, .12), inset 0 1px 0 rgba(255,255,255,.9);
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .btnAcoes:hover .btnAcoes-chevron { transform: translateY(2px); }
+.table-scroll > table[aria-label="Tabela de agendamentos"] .btnAcoes:focus-visible {
+  outline: 3px solid rgba(76, 128, 91, .25);
+  outline-offset: 2px;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .appointment-status {
+  gap: 8px;
+  min-height: 34px;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .appointment-status input.chkConcluir {
+  appearance: none;
+  position: relative;
+  flex: 0 0 38px;
+  width: 38px;
+  height: 22px;
+  margin: 0;
+  border: 1px solid #d8c9a9;
+  border-radius: 999px;
+  background: #eee7d8;
+  cursor: pointer;
+  transition: background .18s ease, border-color .18s ease, box-shadow .18s ease;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .appointment-status input.chkConcluir::before {
+  content: "";
+  position: absolute;
+  top: 2px;
+  left: 2px;
+  width: 16px;
+  height: 16px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow: 0 1px 3px rgba(40, 45, 39, .2);
+  transition: transform .18s ease;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .appointment-status input.chkConcluir:checked {
+  border-color: #82a68b;
+  background: #6d9678;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .appointment-status input.chkConcluir:checked::before { transform: translateX(16px); }
+.table-scroll > table[aria-label="Tabela de agendamentos"] .appointment-status input.chkConcluir:focus-visible {
+  outline: 3px solid rgba(76, 128, 91, .23);
+  outline-offset: 2px;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .appointment-status label {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 4px 9px;
+  border: 1px solid #eadfc8;
+  border-radius: 999px;
+  background: #fbf6e9;
+  color: #80683d;
+  font-size: .68rem;
+  font-weight: 650;
+  white-space: nowrap;
+}
+.table-scroll > table[aria-label="Tabela de agendamentos"] .appointment-status:has(.chkConcluir:checked) label {
+  border-color: #d5e5d7;
+  background: #edf5ee;
+  color: #416c4d;
+}
+.btn-privacidade-valores {
+  display: inline-grid;
+  width: 27px;
+  height: 27px;
+  flex: 0 0 27px;
+  margin-left: auto;
+  padding: 0;
+  place-items: center;
+  border: 1px solid #d9e3da;
+  border-radius: 7px;
+  background: #f0f5f0;
+  color: #42644d;
+  cursor: pointer;
+  transition: background .18s ease, transform .18s ease;
+}
+.btn-privacidade-valores:hover { background: #e3eee4; transform: translateY(-1px); }
+.btn-privacidade-valores:focus-visible { outline: 3px solid rgba(76, 128, 91, .25); outline-offset: 2px; }
+.table-scroll > table.valores-ocultos[aria-label="Tabela de agendamentos"] td:nth-child(5) .appointment-amount {
+  filter: blur(6px);
+  user-select: none;
+  pointer-events: none;
+}
+#financeiroPanel.valores-ocultos #valorTotal strong,
+#financeiroPanel.valores-ocultos #valorDescontos strong,
+#financeiroPanel.valores-ocultos #valorDespesas strong,
+#financeiroPanel.valores-ocultos #valorLiquido strong,
+#financeiroPanel.valores-ocultos #pagamentosResumo li strong,
+#financeiroPanel.valores-ocultos .expenses-total strong,
+#financeiroPanel.valores-ocultos table[aria-label="Tabela de despesas"] td:nth-child(5) {
+  filter: blur(6px);
+  user-select: none;
+  pointer-events: none;
+}
+.catalogo-item-topo strong { color: #344d42; font-size: .92rem; }
+.catalogo-tipo { padding: 3px 8px; border-radius: 999px; background: #f2eee7; color: #78684f; font-size: .65rem; font-weight: 600; }
+.catalogo-item-detalhes p { display: -webkit-box; -webkit-box-orient: vertical; -webkit-line-clamp: 2; overflow: hidden; margin: 5px 0; color: #77736c; font-size: .76rem; line-height: 1.45; }
+.catalogo-item-valor { color: #344d42; font-size: .85rem; font-weight: 700; }
+.catalogo-item-acoes { display: flex; flex-wrap: wrap; gap: 6px; }
+.catalogo-item-acoes button { min-height: 36px; padding: 7px 11px; }
+.catalogo-item-acoes .catalogo-excluir { color: #94564d; border-color: #ead9d5; }
+.catalogo-form { margin: 14px 0 18px; padding: 18px; border: 1px solid #e8e1d7; border-radius: 9px; background: #faf8f4; }
+.catalogo-form[hidden] { display: none !important; }
+.catalogo-form h3 { margin: 0 0 14px; color: #344d42; font-size: 1rem; }
+.catalogo-form-grid { display: grid; grid-template-columns: minmax(0, 1fr) 160px; gap: 12px; }
+.catalogo-form-grid label { display: flex; flex-direction: column; gap: 6px; margin: 0; color: #5f625c; font-size: .76rem; font-weight: 600; }
+.catalogo-form-grid input, .catalogo-form-grid select, .catalogo-form-grid textarea { width: 100%; min-height: 40px; margin: 0; padding: 9px 10px; border: 1px solid #ddd6cc; border-radius: 6px; background: #fff; color: #343a35; font: 400 .84rem var(--font-body); }
+.catalogo-form-grid textarea { min-height: 86px; resize: vertical; }
+.catalogo-form-grid .catalogo-descricao-label { grid-column: 1 / -1; }
+.catalogo-form-grid label small { color: #817c73; font-size: .68rem; font-weight: 400; line-height: 1.4; }
+.catalogo-pendencias-badge { display: inline-grid; min-width: 19px; height: 19px; padding: 0 5px; place-items: center; border-radius: 999px; background: #a76d45; color: #fff; font-size: .65rem; font-weight: 700; }
+.catalogo-pendencias-badge[hidden] { display: none !important; }
+.catalogo-aviso-tempo { display: flex; align-items: flex-start; gap: 11px; margin: 14px 0; padding: 13px 15px; border: 1px solid #ead8ad; border-radius: 9px; background: #fff9eb; color: #755e31; }
+.catalogo-aviso-tempo[hidden] { display: none !important; }
+.catalogo-aviso-tempo > i { margin-top: 2px; color: #b38a3e; }
+.catalogo-aviso-tempo div { display: grid; gap: 3px; }
+.catalogo-aviso-tempo strong { font-size: .8rem; }
+.catalogo-aviso-tempo span { color: #837352; font-size: .73rem; line-height: 1.45; }
+.catalogo-item-tempo { display: inline-flex; align-items: center; gap: 6px; margin-top: 7px; color: #55745b; font-size: .73rem; font-weight: 600; }
+.catalogo-item-tempo.pendente { color: #a16f32; }
+.tempo-medio-manual { display: block; margin: -5px 0 12px; color: #66806c; font-size: .75rem; }
+.catalogo-form-actions { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+.catalogo-form-actions button { min-height: 40px; }
+.modal-lista-espera { max-width: 680px; max-height: 88vh; overflow-y: auto; }
+.lista-espera-card { display: grid; gap: 7px; }
+.lista-espera-card > p { margin: 0; color: #68645d; font-size: .82rem; line-height: 1.5; overflow-wrap: anywhere; }
+.lista-espera-acoes { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 6px; }
+.lista-espera-acoes button { flex: 1 1 180px; min-height: 40px; }
+@media (max-width: 600px) {
+  .catalogo-admin-toolbar { align-items: flex-start; flex-direction: column; }
+  .catalogo-admin-toolbar button { width: 100%; }
+  .service-price-row-admin { grid-template-columns: 1fr; gap: 10px; }
+  .catalogo-form { padding: 13px; }
+  .catalogo-form-grid { grid-template-columns: 1fr; }
+  .catalogo-form-grid .catalogo-descricao-label { grid-column: auto; }
+  .catalogo-form-actions { flex-direction: column-reverse; }
+  .catalogo-form-actions button { width: 100%; }
+  .lista-espera-acoes { flex-direction: column; }
+  .lista-espera-acoes button { width: 100%; }
+}
+</style>
 </body>
 </html>
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
