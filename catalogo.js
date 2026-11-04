@@ -44,3 +44,11 @@ export function calcularTempoMedio(procedimentosTexto, catalogo) {
     texto.includes(item.nome) ? total + (Number(item.tempoMedioMinutos) || 0) : total
   ), 0);
 }
+
+// Monta o link do WhatsApp. Usa api.whatsapp.com (sem o redirecionamento do wa.me,
+// que em navegadores embutidos como o do Instagram corrompia os emojis) e normaliza o texto.
+export function linkWhatsApp(telefone, texto) {
+  const tel = String(telefone || "").replace(/\D/g, "");
+  const msg = String(texto || "").normalize("NFC").replace(/\r\n/g, "\n");
+  return `https://api.whatsapp.com/send?phone=${tel}&text=${encodeURIComponent(msg)}`;
+}

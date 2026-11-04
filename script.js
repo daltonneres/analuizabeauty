@@ -46,12 +46,57 @@ function resolveTemplate(texto) {
   return texto.replace(/\{nome\}/g, getPrimeiroNome());
 }
 
+// --- Salvar o atendimento para quando a cliente sai (ex.: app do banco para pagar o Pix) e volta ---
+const CHAVE_ESTADO = "anaChatEstado_v1";
+const VALIDADE_ESTADO_MS = 24 * 3600 * 1000;
+
+function salvarEstado() {
+  try {
+    if (atendimentoFinalizado || step < 2) { localStorage.removeItem(CHAVE_ESTADO); return; }
+    localStorage.setItem(CHAVE_ESTADO, JSON.stringify({
+      salvoEm: Date.now(), step, answers, reserva, clienteRecorrente
+    }));
+  } catch (e) { /* armazenamento indisponível: segue sem salvar */ }
+}
+
+function limparEstadoSalvo() {
+  try { localStorage.removeItem(CHAVE_ESTADO); } catch (e) {}
+}
+
+function lerEstadoSalvo() {
+  try {
+    const bruto = localStorage.getItem(CHAVE_ESTADO);
+    if (!bruto) return null;
+    const e = JSON.parse(bruto);
+    if (!e || Date.now() - e.salvoEm > VALIDADE_ESTADO_MS || !e.answers || !(e.step >= 2)) {
+      limparEstadoSalvo();
+      return null;
+    }
+    return e;
+  } catch (err) { return null; }
+}
+
+// Salva sempre que a página some (troca de app, aba em segundo plano, fechamento)
+document.addEventListener("visibilitychange", () => {
+  if (document.visibilityState === "hidden") {
+    salvarEstado();
+    clearTimeout(inactivityTimer); // o relógio de inatividade só corre com a página aberta na tela
+  } else {
+    resetInactivityTimer();
+  }
+});
+window.addEventListener("pagehide", salvarEstado);
+
 let inactivityTimer;
 function resetInactivityTimer() {
   clearTimeout(inactivityTimer);
-  // Mais tempo na etapa de pagamento (a cliente precisa ler as regras e copiar o Pix)
-  const ms = atendimentoFinalizado ? 600000 : (step >= 7 ? 180000 : 30000);
+  salvarEstado();
+  if (document.visibilityState === "hidden") return;
+  // Na etapa de pagamento não reinicia sozinho: a cliente pode estar pagando o Pix
+  if (step >= 7 && !atendimentoFinalizado) return;
+  const ms = atendimentoFinalizado ? 600000 : 30000;
   inactivityTimer = setTimeout(() => {
+    limparEstadoSalvo();
     botMessage("⏳ Notei que você ficou um tempinho sem responder, então reiniciei nosso atendimento. Vamos começar de novo? 😊");
     chatMessages.innerHTML = "";
     step = 0;
@@ -85,6 +130,7 @@ function userMessage(text) {
   div.innerText = text;
   chatMessages.appendChild(div);
   chatMessages.scrollTop = chatMessages.scrollHeight;
+  setTimeout(salvarEstado, 0); // depois que a resposta e o passo foram atualizados
 }
 
 // --- Firebase Firestore ---
@@ -100,7 +146,7 @@ import {
   where,
   runTransaction
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-firestore.js";
-import { CATALOGO_PADRAO, criarIdCatalogo, formatarTempoMedio, calcularTempoMedio } from "./catalogo.js";
+import { CATALOGO_PADRAO, criarIdCatalogo, formatarTempoMedio, calcularTempoMedio, linkWhatsApp } from "./catalogo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAlZAZjT8ZOWPf40Tf4lowdXcWxO179e1I",
@@ -384,6 +430,9 @@ async function askNext() {
       return;
     }
     atendimentoFinalizado = true;
+    limparEstadoSalvo();
+    ultimaMensagemZap = resultado.mensagem;
+    ultimoLinkZap = resultado.linkZap;
     if (reserva) {
       botMessage(resolveTemplate(
         `🎉 Prontinho, {nome}! Seu horário está pré-reservado por ${pagamentoConfig.prazoHoras} horas (até ${formatarPrazo(new Date(reserva.prazo))}), aguardando o pagamento da taxa de reserva de ${formatarReais(reserva.sinal)}.\n\n` +
@@ -393,7 +442,35 @@ async function askNext() {
     } else {
       botMessage(resolveTemplate("🎉 Prontinho, {nome}! Recebi todas as suas informações. Te chamo no WhatsApp para confirmar tudo certinho. Até já! 💕"));
     }
+    mostrarApoioWhatsApp();
   }
+}
+
+// Apoio caso o WhatsApp não abra sozinho ou a mensagem chegue sem os emojis
+let ultimaMensagemZap = "";
+let ultimoLinkZap = "";
+function mostrarApoioWhatsApp() {
+  const wrap = document.createElement("div");
+  wrap.id = "optionsDiv";
+  const abrir = document.createElement("a");
+  abrir.className = "chat-option-btn";
+  abrir.href = ultimoLinkZap;
+  abrir.target = "_blank";
+  abrir.rel = "noopener";
+  abrir.textContent = "💬 WhatsApp não abriu? Toque aqui";
+  abrir.style.textDecoration = "none";
+  abrir.style.textAlign = "center";
+  const copiar = document.createElement("button");
+  copiar.type = "button";
+  copiar.className = "chat-option-btn chat-secondary-action";
+  copiar.textContent = "📋 Copiar minha mensagem";
+  copiar.onclick = async () => {
+    try { await copiarTexto(ultimaMensagemZap); copiar.textContent = "✅ Mensagem copiada! Cole no WhatsApp da Ana"; }
+    catch (e) { copiar.textContent = "Não consegui copiar"; }
+  };
+  wrap.append(abrir, copiar);
+  chatMessages.appendChild(wrap);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
 function chaveNomeCliente(nome) {
@@ -760,6 +837,7 @@ function showOptions(question) {
 
 // --- Instruções conforme a forma escolhida para pagar a reserva ---
 async function mostrarInstrucoesPagamento(forma) {
+  salvarEstado();
   const cfg = await pagamentoConfigPromise;
   const horas = cfg.prazoHoras;
 
@@ -777,6 +855,10 @@ async function mostrarInstrucoesPagamento(forma) {
     botMessage(resolveTemplate(`Tudo bem, {nome}! Combine com a Ana pelo WhatsApp como prefere pagar a reserva.\n\n⏳ O prazo para o pagamento é de ${horas} horas.`));
   }
 
+  mostrarBotaoFinalizar();
+}
+
+function mostrarBotaoFinalizar() {
   const optionsDiv = document.createElement('div');
   optionsDiv.id = 'optionsDiv';
   chatMessages.appendChild(optionsDiv);
@@ -790,6 +872,37 @@ async function mostrarInstrucoesPagamento(forma) {
     resetInactivityTimer();
   };
   optionsDiv.appendChild(btn);
+  chatMessages.scrollTop = chatMessages.scrollHeight;
+}
+
+// Cliente que saiu na etapa de pagamento e voltou: pergunta se já pagou, sem repetir a chave Pix
+function perguntarSePagou(forma) {
+  botMessage(resolveTemplate("Vimos que você saiu por um instante, {nome}. O pagamento da taxa de reserva já foi realizado? 💳"));
+  const optionsDiv = document.createElement('div');
+  optionsDiv.id = 'optionsDiv';
+  const sim = document.createElement('button');
+  sim.className = "chat-option-btn";
+  sim.innerText = "Sim, já paguei";
+  sim.onclick = async () => {
+    userMessage("Sim, já paguei");
+    optionsDiv.remove();
+    await aguardarChat(400);
+    botMessage(resolveTemplate("Que ótimo, {nome}! 💕 Agora é só finalizar e enviar o comprovante para a Ana pelo WhatsApp."));
+    mostrarBotaoFinalizar();
+    resetInactivityTimer();
+  };
+  const nao = document.createElement('button');
+  nao.className = "chat-option-btn chat-secondary-action";
+  nao.innerText = "Ainda não";
+  nao.onclick = async () => {
+    userMessage("Ainda não");
+    optionsDiv.remove();
+    await aguardarChat(400);
+    mostrarInstrucoesPagamento(forma);
+    resetInactivityTimer();
+  };
+  optionsDiv.append(sim, nao);
+  chatMessages.appendChild(optionsDiv);
   chatMessages.scrollTop = chatMessages.scrollHeight;
 }
 
@@ -1101,9 +1214,11 @@ async function sendToWhatsAppAndFirestore() {
     });
 
     const telefone = "554699401775";
-    if (janelaWhatsApp) janelaWhatsApp.location.href = `https://wa.me/${telefone}?text=${encodeURIComponent(mensagem)}`;
+    const linkZap = linkWhatsApp(telefone, mensagem);
+    if (janelaWhatsApp) janelaWhatsApp.location.href = linkZap;
+    limparEstadoSalvo();
     console.log("✅ Agendamento e horário salvos juntos no Firestore!");
-    return { ok: true };
+    return { ok: true, linkZap, mensagem };
 
   } catch (e) {
     if (janelaWhatsApp) janelaWhatsApp.close();
@@ -1167,7 +1282,55 @@ userInput.addEventListener('keydown', (event) => {
 });
 
 // --- Inicializa ---
+async function restaurarAtendimento(e) {
+  Object.assign(answers, e.answers);
+  step = e.step;
+  reserva = e.reserva || null;
+  clienteRecorrente = !!e.clienteRecorrente;
+
+  // Se a data escolhida já passou, volta para escolher outra
+  const dataISO = dataISOChat(answers["Escolha a data:"]) || String(answers["Escolha a data:"] || "");
+  const hoje = new Date();
+  const hojeISO = `${hoje.getFullYear()}-${String(hoje.getMonth() + 1).padStart(2, "0")}-${String(hoje.getDate()).padStart(2, "0")}`;
+  if (/^\d{4}-\d{2}-\d{2}$/.test(dataISO) && dataISO < hojeISO) {
+    delete answers["Escolha a data:"];
+    delete answers["Qual período prefere? (Manhã, Tarde, Noite)"];
+    delete answers["Escolha o horário"];
+    reserva = null;
+    step = Math.min(step, 4);
+  }
+
+  await precosServicosPromise;
+  botMessage(resolveTemplate("💕 Que bom te ver de volta, {nome}! Guardei o seu atendimento, então você não precisa começar de novo."));
+  const resumo = [
+    answers["Escolha a data:"] ? `📅 Data: ${answers["Escolha a data:"]}` : "",
+    answers["Escolha o horário"] ? `⏰ Horário: ${answers["Escolha o horário"]}` : "",
+    answers["Quais procedimentos deseja?"] ? `💄 Procedimentos: ${answers["Quais procedimentos deseja?"]}` : ""
+  ].filter(Boolean).join("\n");
+  if (resumo) botMessage(resumo);
+  await aguardarChat(500);
+
+  const mostrarCampo = step <= 3;
+  userInput.style.display = mostrarCampo ? "block" : "none";
+  sendBtn.style.display = mostrarCampo ? "block" : "none";
+
+  if (step >= 7 && reserva && reserva.forma) {
+    perguntarSePagou(reserva.forma);
+  } else if (clienteRecorrente && step <= 3) {
+    const ok = await oferecerRepetirAtendimento();
+    if (!ok) askNext();
+  } else {
+    askNext();
+  }
+  resetInactivityTimer();
+}
+
 document.addEventListener("DOMContentLoaded", () => {
+  const salvo = lerEstadoSalvo();
+  if (salvo) {
+    restaurarAtendimento(salvo);
+    return;
+  }
   botMessage(questions[0]);
   resetInactivityTimer();
 });
@@ -1267,7 +1430,7 @@ function renderizarAgendamentosCliente() {
           const pedido={nome:identidadeCliente.nome,telefone:identidadeCliente.telefone,tipo:"reagendamento",dataAtual:String(ag.data||""),dataDesejada:inputData.value,horarioDesejado:inputHora.value,mensagem:`Pedido para o atendimento ${ag.procedimento||""} de ${dataCliente(ag.data)} às ${ag.horario||""}.`,status:"aguardando",criadoEm:new Date().toISOString()};
           await addDoc(collection(db,"solicitacoesCliente"),pedido);
           const texto=`Olá, Ana! Registrei um pedido de reagendamento pelo site.\n\nCliente: ${identidadeCliente.nome}\nTelefone: ${identidadeCliente.telefone}\nAtendimento atual: ${dataCliente(ag.data)} às ${ag.horario||""}\nNova preferência: ${dataCliente(inputData.value)} às ${inputHora.value}\n\nAguardo a confirmação da disponibilidade.`;
-          const link=`https://wa.me/554699401775?text=${encodeURIComponent(texto)}`;
+          const link=linkWhatsApp("554699401775", texto);
           if(janela) janela.location.href=link;
           msg.textContent="Pedido registrado. Envie a mensagem no WhatsApp para a Ana confirmar o novo horário.";
           if(!janela){const a=document.createElement("a");a.href=link;a.target="_blank";a.rel="noopener noreferrer";a.textContent="Abrir WhatsApp";msg.append(" ",a);}
@@ -1281,7 +1444,7 @@ function renderizarAgendamentosCliente() {
           const pedido={nome:identidadeCliente.nome,telefone:identidadeCliente.telefone,tipo:"cancelamento",dataAtual:String(ag.data||""),dataDesejada:"",horarioDesejado:"",mensagem:`Pedido de cancelamento do atendimento ${ag.procedimento||""} de ${dataCliente(ag.data)} às ${ag.horario||""}.`,status:"aguardando",criadoEm:new Date().toISOString()};
           await addDoc(collection(db,"solicitacoesCliente"),pedido);
           const texto=`Olá, Ana! Registrei um pedido de cancelamento pelo site.\n\nCliente: ${identidadeCliente.nome}\nTelefone: ${identidadeCliente.telefone}\nAtendimento: ${dataCliente(ag.data)} às ${ag.horario||""}\n\nPor favor, confirme o recebimento do pedido.`;
-          const link=`https://wa.me/554699401775?text=${encodeURIComponent(texto)}`;
+          const link=linkWhatsApp("554699401775", texto);
           if(janela) janela.location.href=link;
           if(!janela){statusPedido.textContent="Pedido registrado. ";const a=document.createElement("a");a.href=link;a.target="_blank";a.rel="noopener noreferrer";a.textContent="Abrir WhatsApp";statusPedido.appendChild(a);}
           else statusPedido.textContent="Pedido registrado e WhatsApp aberto para enviar à Ana.";

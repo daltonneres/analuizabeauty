@@ -23,7 +23,7 @@ import {
   signOut,
   onAuthStateChanged
 } from "https://www.gstatic.com/firebasejs/10.12.2/firebase-auth.js";
-import { CATALOGO_PADRAO, criarIdCatalogo, formatarTempoMedio, tempoMedioConfigurado, calcularTempoMedio } from "./catalogo.js";
+import { CATALOGO_PADRAO, criarIdCatalogo, formatarTempoMedio, tempoMedioConfigurado, calcularTempoMedio, linkWhatsApp } from "./catalogo.js";
 
 const firebaseConfig = {
   apiKey: "AIzaSyAlZAZjT8ZOWPf40Tf4lowdXcWxO179e1I",
@@ -805,7 +805,7 @@ const MSG_LOCAL =
 // Abre o WhatsApp; aceita uma janela já aberta (evita bloqueio de pop-up após await)
 function abrirWhatsApp(telefone, msg, janela) {
   const tel = (telefone || "").replace(/\D/g, "");
-  const link = `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
+  const link = linkWhatsApp(`55${tel}`, msg);
   if (janela && !janela.closed) janela.location.href = link;
   else window.open(link, "_blank");
 }
@@ -2284,7 +2284,7 @@ document.getElementById("enviarReagendamento").onclick = async () => {
       }
     });
     const tel = (agendamentoSelecionado.telefone || "").replace(/\D/g, "");
-    janelaWhatsApp.location.href = `https://wa.me/55${tel}?text=${encodeURIComponent(mensagem)}`;
+    janelaWhatsApp.location.href = linkWhatsApp(`55${tel}`, mensagem);
     modalAcoes.style.display = "none";
     await verificarReagendamentosPendentes(true);
   } catch (e) {
@@ -2470,7 +2470,7 @@ async function carregarListaEspera() {
         if (!numeros) return alert("Esta cliente não informou um telefone.");
         const destino = numeros.startsWith("55") ? numeros : `55${numeros}`;
         const mensagem = `Oi, ${pedido.nome || "tudo bem"}! Vi sua preferência de horário para ${pedido.procedimento || "o atendimento"}. Vou verificar as opções e já retorno. 💕`;
-        window.open(`https://wa.me/${destino}?text=${encodeURIComponent(mensagem)}`, "_blank", "noopener");
+        window.open(linkWhatsApp(destino, mensagem), "_blank", "noopener");
       };
       const concluir = document.createElement("button");
       concluir.type = "button";
@@ -2538,7 +2538,7 @@ async function carregarSolicitacoesCliente() {
         if (numeros.length < 10) return alert("O telefone informado não é válido.");
         const destino = numeros.startsWith("55") ? numeros : `55${numeros}`;
         const texto = `Olá, ${pedido.nome || "tudo bem"}! Vi sua solicitação de ${tipo.toLowerCase()} enviada pelo site. Vou te ajudar com isso. 💕`;
-        window.open(`https://wa.me/${destino}?text=${encodeURIComponent(texto)}`, "_blank", "noopener");
+        window.open(linkWhatsApp(destino, texto), "_blank", "noopener");
       };
       const resolver = document.createElement("button");
       resolver.className = "btnSecundario";
@@ -2744,7 +2744,7 @@ Te esperamos com muito carinho! 💄✨
 `;
 
   if (!tel) return alert("Telefone não informado!");
-  const link = `https://wa.me/55${tel}?text=${encodeURIComponent(msg)}`;
+  const link = linkWhatsApp(`55${tel}`, msg);
   window.open(link, "_blank");
 };
 
@@ -3033,7 +3033,7 @@ enviarSenha.onclick = () => {
 Solicitação enviada pelo Painel Administrativo.
   `;
 
-  const whatsapp = `https://wa.me/5546999711937?text=${encodeURIComponent(mensagem)}`;
+  const whatsapp = linkWhatsApp("5546999711937", mensagem);
   window.open(whatsapp, "_blank");
 
   modalSenha.style.display = "none";
