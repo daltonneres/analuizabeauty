@@ -1194,7 +1194,11 @@ nav ul li a { color: #3d4942; font-size: .82rem; letter-spacing: .035em; }
   .portfolio-grid .polaroid { max-width: 420px; }
   .quem .polaroid img { width: 100%; max-width: 300px; height: 340px; }
   .sobre-flex { gap: 28px; }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main
 
 /* ── Ajustes após retorno: agendamento em primeiro plano ── */
 .chat-section {
@@ -1299,10 +1303,17 @@ nav ul li a { color: #3d4942; font-size: .82rem; letter-spacing: .035em; }
 @media (max-width: 390px) {
   .servicos-grid { grid-template-columns: 1fr; }
   .servicos-grid > .polaroid > img { flex-basis: 210px; height: 210px; }
+<<<<<<< HEAD
 }
 .chat-section { grid-template-columns: minmax(440px, 1.12fr) minmax(280px, .88fr); }
 @media (max-width: 900px) { .chat-section { grid-template-columns: minmax(360px, 1.22fr) minmax(235px, .78fr); } }
 @media (max-width: 700px) { .chat-section { grid-template-columns: 1fr; } }
+=======
+}
+.chat-section { grid-template-columns: minmax(440px, 1.12fr) minmax(280px, .88fr); }
+@media (max-width: 900px) { .chat-section { grid-template-columns: minmax(360px, 1.22fr) minmax(235px, .78fr); } }
+@media (max-width: 700px) { .chat-section { grid-template-columns: 1fr; } }
+>>>>>>> origin/main
 /* ── Abertura limpa: foco total no chatbot ───── */
 .chat-section {
   display: flex;
@@ -1358,7 +1369,11 @@ nav ul li a { color: #3d4942; font-size: .82rem; letter-spacing: .035em; }
   .chat-container { min-height: 420px; padding: 20px 16px; }
   .chat-header h2 { font-size: 1.5rem; }
   .chat-messages { min-height: 160px; max-height: 300px; }
+<<<<<<< HEAD
 }
+=======
+}
+>>>>>>> origin/main
 
 /* Catálogo com valores padronizados e discretos */
 .servicos-grid .servico-price-row {
@@ -1627,6 +1642,7 @@ body.client-area-open { overflow: hidden; }
   .chat-calendar { animation: none; }
   .chat-calendar-day, .chat-calendar-nav { transition: none; }
 }
+<<<<<<< HEAD
 
 /* Fluxo rápido para clientes recorrentes */
 .chat-container.modo-recorrente { border-color: var(--ouro, #d4af37); }
@@ -1638,3 +1654,5 @@ body.client-area-open { overflow: hidden; }
 .chat-recorrente-opcoes { display: flex; flex-wrap: wrap; gap: 8px; margin: 6px 0 10px; }
 .chat-recorrente-opcoes .chat-option-btn { margin: 0; padding: 7px 14px; font-size: .84rem; line-height: 1.3; border-radius: 18px; width: auto; }
 .chat-recorrente-opcoes .chat-option-btn:hover { transform: none; }
+=======
+>>>>>>> origin/main
