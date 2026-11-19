@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Fale Conosco — Ana Luiza Fernandes Makeup</title>
+<link rel="icon" href="favicon.png" type="image/png">
+<link href="https://fonts.googleapis.com/css2?family=Great+Vibes&family=Cormorant+Garamond:wght@400;600&family=Jost:wght@400;500;600&display=swap" rel="stylesheet">
+<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+<link rel="stylesheet" href="paginas.css">
+</head>
+<body>
+<header class="topo"><div class="wrap">
+  <a class="logo" href="index.html">Ana Luiza</a>
+  <nav class="menu" aria-label="Páginas">
+    <a href="index.html">Início</a>
+    <a href="cancelamento.html">Cancelamento</a>
+    <a href="privacidade.html">Privacidade</a>
+    <a href="contato.html" aria-current="page">Contato</a>
+  </nav>
+</div></header>
+
+<main class="wrap">
+  <div class="abertura">
+    <h1>Vamos conversar?</h1>
+    <p>Tire dúvidas ou peça informações pelos canais abaixo. Para agendar um horário, use o assistente virtual da página inicial.</p>
+  </div>
+
+  <div class="contato">
+    <section class="zap">
+      <p class="status" id="status" role="status">Confira os horários ao lado.</p>
+      <p class="tel">(46) 99940-1775</p>
+      <p>O jeito mais rápido de falar com a Ana.</p>
+      <div class="acoes">
+        <a class="btn claro" href="https://wa.me/5546999401775" target="_blank" rel="noopener"><i class="fa-brands fa-whatsapp"></i> Falar no WhatsApp</a>
+        <a class="btn contorno" href="index.html#chat"><i class="fa-solid fa-calendar-check"></i> Agendar online</a>
+      </div>
+    </section>
+
+    <section class="info">
+      <div>
+        <h2>Endereço</h2>
+        <p>Salão Santa Sara<br>Av. Bertino Warmiling, 945<br>Centro, Salto do Lontra/PR</p>
+        <p><a href="https://www.google.com/maps?q=Av.%20Bertino%20Warmiling,%20945%20-%20Centro,%20Salto%20do%20Lontra%20-%20PR" target="_blank" rel="noopener">Abrir no mapa</a></p>
+      </div>
+      <div class="horas">
+        <h2>Horários</h2>
+        <p data-g="semana"><span>Segunda a sexta</span><span>06h às 12h e 13h às 20h</span></p>
+        <p data-g="fim"><span>Sábado e domingo</span><span>07h às 18h</span></p>
+      </div>
+      <div>
+        <h2>E-mail</h2>
+        <p><a href="mailto:anafernandesmakeup01@gmail.com">anafernandesmakeup01@gmail.com</a></p>
+      </div>
+      <div>
+        <h2>Redes sociais</h2>
+        <p>Trabalhos, bastidores e novidades.</p>
+        <div class="redes">
+          <a href="https://www.instagram.com/analuizafernandesmakeup" target="_blank" rel="noopener"><i class="fa-brands fa-instagram"></i> Instagram</a>
+          <a href="https://www.tiktok.com/@anafernandesmakeup01" target="_blank" rel="noopener"><i class="fa-brands fa-tiktok"></i> TikTok</a>
+        </div>
+      </div>
+    </section>
+  </div>
+</main>
+
+<footer class="rodape"><div class="wrap">
+  <nav aria-label="Rodapé">
+    <a href="index.html">Início</a>
+    <a href="cancelamento.html">Política de Cancelamento</a>
+    <a href="privacidade.html">Política de Privacidade</a>
+  </nav>
+  <p>&copy; 2026 Ana Luiza Fernandes Makeup. Todos os direitos reservados.</p>
+</div></footer>
+
+<script>
+// Horários em minutos desde 00:00. Dias: 0 = domingo ... 6 = sábado.
+const SEMANA = [[360,720],[780,1200]], FIM = [[420,1080]];
+const faixas = d => (d === 0 || d === 6) ? FIM : SEMANA;
+const hh = m => String(Math.floor(m/60)).padStart(2,'0') + 'h';
+
+const p = Object.fromEntries(new Intl.DateTimeFormat('en-US', {
+  timeZone:'America/Sao_Paulo', weekday:'short', hour:'numeric', minute:'numeric', hourCycle:'h23'
+}).formatToParts(new Date()).map(x => [x.type, x.value]));
+const dia = ['Sun','Mon','Tue','Wed','Thu','Fri','Sat'].indexOf(p.weekday);
+const agora = (+p.hour) * 60 + (+p.minute);
+
+document.querySelector(`[data-g="${dia === 0 || dia === 6 ? 'fim' : 'semana'}"]`).classList.add('hoje');
+
+const st = document.getElementById('status');
+const aberta = faixas(dia).find(([a,b]) => agora >= a && agora < b);
+if (aberta) {
+  st.textContent = 'Aberto agora, fecha às ' + hh(aberta[1]);
+  st.classList.add('aberto');
+} else {
+  const prox = faixas(dia).find(([a]) => a > agora);
+  st.textContent = prox
+    ? 'Fechado agora, abre hoje às ' + hh(prox[0])
+    : 'Fechado agora, abre amanhã às ' + hh(faixas((dia + 1) % 7)[0][0]);
+}
+</script>
+</body>
+</html>
